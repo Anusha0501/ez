@@ -15,7 +15,7 @@ import matplotlib.patches as patches
 import io
 import base64
 
-from ..core.models import Slide, SlideLayout, VisualElement, ChartData, ChartType
+from core.models import Slide, SlideLayout, VisualElement, ChartData, ChartType
 
 
 class PPTXUtils:

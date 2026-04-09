@@ -7,8 +7,8 @@ import logging
 import re
 from typing import Dict, Any, List, Optional
 
-from ..core.agent import GeminiAgent
-from ..core.models import ChartType, ChartData
+from core.agent import GeminiAgent
+from core.models import ChartType, ChartData
 
 
 class ChartDecisionAgent(GeminiAgent):

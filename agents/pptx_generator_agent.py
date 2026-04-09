@@ -11,9 +11,9 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 
-from ..core.agent import BaseAgent
-from ..core.models import Slide, ChartData, ChartType
-from ..utils.pptx_utils import PPTXUtils
+from core.agent import BaseAgent
+from core.models import Slide, ChartData, ChartType
+from utils.pptx_utils import PPTXUtils
 
 
 class PPTXGeneratorAgent(BaseAgent):

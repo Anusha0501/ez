@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 import markdown
 from markdown.extensions import tables, codehilite
 
-from ..core.models import MarkdownElement, ParsedMarkdown
+from core.models import MarkdownElement, ParsedMarkdown
 
 
 class MarkdownParser:

@@ -6,8 +6,8 @@ import json
 import logging
 from typing import Dict, Any, List
 
-from ..core.agent import GeminiAgent
-from ..core.models import SlideType
+from core.agent import GeminiAgent
+from core.models import SlideType
 
 
 class SlideClassifierAgent(GeminiAgent):

@@ -6,9 +6,9 @@ import json
 import logging
 from typing import Dict, Any
 
-from ..core.agent import BaseAgent
-from ..core.models import ParsedMarkdown
-from ..utils.markdown_parser import MarkdownParser
+from core.agent import BaseAgent
+from core.models import ParsedMarkdown
+from utils.markdown_parser import MarkdownParser
 
 
 class ParserAgent(BaseAgent):

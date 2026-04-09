@@ -3,11 +3,11 @@ Layout Engine - Deterministic engine for enforcing grid systems, spacing, and al
 """
 
 import logging
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 import math
 
-from ..core.agent import BaseAgent
-from ..core.models import SlideLayout, VisualElement, ChartData
+from core.agent import BaseAgent
+from core.models import SlideLayout, VisualElement, ChartData
 
 
 class LayoutEngine(BaseAgent):

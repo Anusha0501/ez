@@ -9,7 +9,8 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 
 from .models import AgentOutput
-from ..utils.gemini_client import GeminiClient
+from utils.gemini_client import GeminiClient
+from utils.pptx_utils import PPTXUtils
 
 
 class BaseAgent(ABC):
