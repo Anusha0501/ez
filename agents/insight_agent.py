@@ -88,7 +88,14 @@ class InsightAgent(GeminiAgent):
             
         except Exception as e:
             self.logger.error(f"Error in insight agent: {str(e)}")
-            raise
+            # Return fallback result instead of crashing
+            fallback_result = self._create_fallback_insights(parsed_data)
+            self.log_reasoning("fallback", "Using fallback insights due to agent failure", {
+                "error": str(e),
+                "fallback_insights": len(fallback_result.get("insights", [])),
+                "fallback_themes": len(fallback_result.get("themes", []))
+            })
+            return fallback_result
     
     def _prepare_content_summary(self, parsed_data: Dict, numeric_data: List, structure_analysis: Dict) -> str:
         """Prepare a comprehensive summary of the content for analysis."""
@@ -332,3 +339,57 @@ class InsightAgent(GeminiAgent):
                 return False
         
         return True
+    
+    def _create_fallback_insights(self, parsed_data: Dict) -> Dict[str, Any]:
+        """Create fallback insights when Gemini fails."""
+        sections = parsed_data.get("sections", [])
+        elements = parsed_data.get("elements", [])
+        
+        # Extract basic insights from content
+        fallback_insights = []
+        
+        # Add section-based insights
+        for section in sections[:3]:  # Limit to first 3 sections
+            section_title = section.get("title", "Unknown Section")
+            fallback_insights.append({
+                "text": f"Key theme: {section_title}",
+                "importance": "medium"
+            })
+        
+        # Add element-based insights
+        text_elements = [e for e in elements if e.get("type") == "text"]
+        if text_elements:
+            fallback_insights.append({
+                "text": f"Document contains {len(text_elements)} text elements",
+                "importance": "low"
+            })
+        
+        # Add numeric data insights
+        numeric_data = parsed_data.get("numeric_data", [])
+        if numeric_data:
+            fallback_insights.append({
+                "text": f"Document contains {len(numeric_data)} numeric data points",
+                "importance": "high"
+            })
+        
+        # Add structure insights
+        total_elements = len(elements)
+        total_sections = len(sections)
+        fallback_insights.append({
+            "text": f"Document structure: {total_sections} sections, {total_elements} elements",
+            "importance": "medium"
+        })
+        
+        return {
+            "insights": fallback_insights,
+            "executive_summary": {
+                "key_points": fallback_insights[:3],  # Top 3 insights
+                "themes": [fallback_insights[0].get("text", "")] if fallback_insights else []
+            },
+            "themes": fallback_insights,
+            "metrics": numeric_data[:5] if numeric_data else [],
+            "analysis_metadata": {
+                "content_depth": self._assess_content_depth(""),
+                "fallback_used": True
+            }
+        }

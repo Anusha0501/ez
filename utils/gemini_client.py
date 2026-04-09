@@ -2,7 +2,8 @@
 Google Gemini client for AI reasoning.
 """
 
-import os
+import time
+import random
 import json
 import logging
 from typing import Dict, Any, Optional
@@ -40,51 +41,50 @@ class GeminiClient:
             raise
     
     def generate_structured_response(self, prompt: str, system_prompt: Optional[str] = None, 
-                                   output_schema: Optional[Dict] = None) -> Dict[str, Any]:
-        """Generate a structured JSON response from Gemini."""
-        try:
-            # Build the full prompt
-            full_prompt = prompt
-            if system_prompt:
-                full_prompt = f"System: {system_prompt}\n\nUser: {prompt}"
-            
-            # Add JSON output instructions
-            if output_schema:
-                schema_instruction = f"\n\nIMPORTANT: Respond with valid JSON only. Use this schema:\n{json.dumps(output_schema, indent=2)}"
-                full_prompt += schema_instruction
-            else:
-                full_prompt += "\n\nIMPORTANT: Respond with valid JSON only."
-            
-            response = self.model.generate_content(full_prompt)
-            
-            # Parse JSON response
+                                   output_schema: Optional[Dict] = None, 
+                                   max_retries: int = 3) -> Dict[str, Any]:
+        """Generate a structured JSON response from Gemini with retry logic."""
+        for attempt in range(max_retries):
             try:
-                # Clean the response to extract JSON
-                response_text = response.text.strip()
-                if response_text.startswith("```json"):
-                    response_text = response_text[7:]
-                if response_text.endswith("```"):
-                    response_text = response_text[:-3]
-                response_text = response_text.strip()
+                # Build the full prompt
+                full_prompt = prompt
+                if system_prompt:
+                    full_prompt = f"System: {system_prompt}\n\nUser: {prompt}"
+                else:
+                    full_prompt = prompt
                 
-                return json.loads(response_text)
+                response = self.model.generate_content(full_prompt)
                 
+                # Check if response is valid
+                if response and response.text:
+                    try:
+                        # Try to parse as JSON
+                        parsed_response = json.loads(response.text)
+                        return parsed_response
+                    except json.JSONDecodeError:
+                        # If JSON parsing fails, try to extract with regex
+                        import re
+                        json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+                        if json_match:
+                            try:
+                                return json.loads(json_match.group(0))
+                            except:
+                                pass
+                
+                # Log retry attempt
+                self.logger.info(f"Gemini call attempt {attempt + 1}/{max_retries}")
+                
+                # If we got a valid response, return it
+                if response and response.text:
+                    return response.text
+            
             except json.JSONDecodeError as e:
                 self.logger.error(f"Failed to parse JSON response: {response.text}")
-                # Try to extract JSON from the response
-                import re
-                json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-                if json_match:
-                    try:
-                        return json.loads(json_match.group())
-                    except json.JSONDecodeError:
-                        pass
-                
                 raise ValueError(f"Invalid JSON response from Gemini: {str(e)}")
                 
-        except Exception as e:
-            self.logger.error(f"Gemini API error: {str(e)}")
-            raise
+            except Exception as e:
+                self.logger.error(f"Gemini API error: {str(e)}")
+                raise
     
     def test_connection(self) -> bool:
         """Test the Gemini API connection."""

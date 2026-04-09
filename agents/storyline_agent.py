@@ -97,7 +97,13 @@ class StorylineAgent(GeminiAgent):
             
         except Exception as e:
             self.logger.error(f"Error in storyline agent: {str(e)}")
-            raise
+            # Return fallback result instead of crashing
+            fallback_result = self._create_fallback_storyline(parsed_data, insights)
+            self.log_reasoning("fallback", "Using fallback storyline due to agent failure", {
+                "error": str(e),
+                "fallback_applied": True
+            })
+            return fallback_result
     
     def _prepare_content_context(self, parsed_data: Dict, insights: Dict) -> str:
         """Prepare a comprehensive context for storyline creation."""
@@ -294,14 +300,22 @@ class StorylineAgent(GeminiAgent):
             pass
         
         # Fallback distribution
-        return {
+        def _create_fallback_storyline(self, parsed_data: Dict, insights: Dict) -> Dict[str, Any]:
+        """Create fallback storyline when Gemini fails."""
+        sections = parsed_data.get("sections", [])
+        elements = parsed_data.get("elements", [])
+        
+        # Create basic storyline structure
+        fallback_storyline = {
             "introduction": 2,
             "summary": 1,
-            "analysis": max(3, slide_count // 3),
-            "strategy": max(2, slide_count // 4),
-            "implementation": max(1, slide_count // 5),
+            "analysis": max(3, len(sections)),
+            "strategy": max(2, len(sections)),
+            "implementation": max(1, len(sections)),
             "conclusion": 2
         }
+        
+        return fallback_storyline
     
     def _create_detailed_structure(self, narrative_flow: List[str], content_distribution: Dict[str, int], content_context: str) -> List[Dict[str, Any]]:
         """Create detailed slide structure based on narrative flow and distribution."""

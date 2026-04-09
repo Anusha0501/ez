@@ -1,5 +1,5 @@
 """
-Robust Streamlit app for Markdown to PPTX conversion using fault-tolerant multi-agent system.
+Streamlit app for Markdown to PPTX conversion using multi-agent AI system.
 """
 
 import streamlit as st
@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 
-# Import fault-tolerant system
+# Import existing multi-agent system
 from core.fault_tolerant_orchestrator import FaultTolerantOrchestrator
 from agents import (
     ParserAgent,
@@ -61,6 +61,39 @@ def initialize_agents() -> Dict[str, Any]:
         st.error(f"Failed to initialize agents: {str(e)}")
         return {}
 
+def generate_ppt_from_markdown(file_content: str, slide_count: int = 12) -> Tuple[Optional[str], List[Dict]]:
+    """Generate PPTX from markdown using multi-agent system."""
+    try:
+        # Initialize agents
+        agents = initialize_agents()
+        if not agents:
+            return None, []
+        
+        # Initialize fault-tolerant orchestrator
+        orchestrator = FaultTolerantOrchestrator(agents)
+        
+        # Create temporary file for output
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as tmp_file:
+            # Prepare input data
+            input_data = {
+                "markdown_content": file_content,
+                "output_path": tmp_file.name,
+                "slide_count": slide_count
+            }
+            
+            # Execute multi-agent workflow
+            presentation = orchestrator.execute_workflow_robust(input_data)
+            
+            # Get execution logs
+            agent_logs = orchestrator.get_execution_logs()
+            
+            return tmp_file.name, agent_logs
+            
+    except Exception as e:
+        st.error(f"Error generating PPTX: {str(e)}")
+        logger.error(f"PPTX generation failed: {str(e)}")
+        return None, []
+
 def validate_markdown_file(uploaded_file) -> bool:
     """Validate uploaded markdown file."""
     if uploaded_file is None:
@@ -79,7 +112,7 @@ def validate_markdown_file(uploaded_file) -> bool:
     return True
 
 def display_agent_logs(logs: List[Dict]):
-    """Display agent execution logs with recovery indicators."""
+    """Display agent execution logs in expandable format."""
     if not logs:
         st.info("No agent logs available")
         return
@@ -91,7 +124,7 @@ def display_agent_logs(logs: List[Dict]):
             action = log.get('action', '')
             details = log.get('details', '')
             
-            # Create log entry with status indicators
+            # Create log entry
             with st.container():
                 cols = st.columns([2, 8])
                 with cols[0]:
@@ -99,13 +132,11 @@ def display_agent_logs(logs: List[Dict]):
                     st.caption(f"_{timestamp}_")
                 
                 with cols[1]:
-                    if 'success' in action.lower():
+                    if action == 'start':
+                        st.success(f"🚀 {action}")
+                    elif action == 'complete':
                         st.success(f"✅ {action}")
-                    elif 'fallback' in action.lower():
-                        st.warning(f"⚠ {action}")
-                    elif 'retry' in action.lower():
-                        st.info(f"🔄 {action}")
-                    elif 'error' in action.lower():
+                    elif action == 'error':
                         st.error(f"❌ {action}")
                     else:
                         st.info(f"📝 {action}")
@@ -114,9 +145,9 @@ def display_agent_logs(logs: List[Dict]):
                         st.json(details)
 
 def main():
-    """Main Streamlit application with fault tolerance."""
+    """Main Streamlit application."""
     st.set_page_config(
-        page_title="🧠 Markdown → PPTX Agentic Generator",
+        page_title="Markdown → PPTX Agentic Generator",
         page_icon="🧠",
         layout="centered",
         initial_sidebar_state="expanded"
@@ -124,7 +155,7 @@ def main():
     
     # Header
     st.title("🧠 Markdown → PPTX Agentic Generator")
-    st.markdown("*AI-powered multi-agent system with fault tolerance*")
+    st.markdown("*AI-powered multi-agent system for professional presentations*")
     
     # Sidebar controls
     with st.sidebar:
@@ -174,8 +205,8 @@ def main():
                 st.session_state.processing_state = 'processing'
                 
                 # Show processing
-                with st.spinner("🤖 Running AI agents with fault tolerance..."):
-                    # Generate PPTX with robust system
+                with st.spinner("🤖 Running AI agents..."):
+                    # Generate PPTX
                     pptx_path, agent_logs = generate_ppt_from_markdown(content, slide_count)
                 
                 if pptx_path:
@@ -206,11 +237,6 @@ def main():
         with col2:
             st.metric("Slides Generated", slide_count)
         
-        # Check if fallbacks were used
-        fallback_used = any("fallback" in log.get('action', '').lower() for log in st.session_state.agent_logs)
-        if fallback_used:
-            st.warning("⚠ Some agents used fallback logic → output generated")
-        
         # Download section
         st.subheader("💾 Download")
         st.success(f"PowerPoint file ready: `{os.path.basename(st.session_state.pptx_path)}`")
@@ -230,50 +256,16 @@ def main():
     
     elif st.session_state.processing_state == 'error':
         st.error("❌ Processing failed. Please try again.")
-        st.info("💡 The system uses fault tolerance - errors are handled gracefully")
     
     # Footer
     st.markdown("---")
     st.markdown(
         """
         <div style='text-align: center; color: #666; font-size: 0.8em;'>
-        🧠 Powered by Multi-Agent AI System with Fault Tolerance • 9 Agents Working Together
+        🧠 Powered by Multi-Agent AI System • 9 Agents Working Together
         </div>
         """
     )
-
-def generate_ppt_from_markdown(file_content: str, slide_count: int = 12) -> Tuple[Optional[str], List[Dict]]:
-    """Generate PPTX from markdown using fault-tolerant multi-agent system."""
-    try:
-        # Initialize agents
-        agents = initialize_agents()
-        if not agents:
-            return None, []
-        
-        # Initialize fault-tolerant orchestrator
-        orchestrator = FaultTolerantOrchestrator(agents)
-        
-        # Create temporary file for output
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pptx') as tmp_file:
-            # Prepare input data
-            input_data = {
-                "markdown_content": file_content,
-                "output_path": tmp_file.name,
-                "slide_count": slide_count
-            }
-            
-            # Execute multi-agent workflow
-            presentation = orchestrator.execute_workflow_robust(input_data)
-            
-            # Get execution logs
-            agent_logs = orchestrator.get_execution_logs()
-            
-            return tmp_file.name, agent_logs
-            
-    except Exception as e:
-        st.error(f"Error generating PPTX: {str(e)}")
-        logger.error(f"PPTX generation failed: {str(e)}")
-        return None, []
 
 if __name__ == "__main__":
     main()
