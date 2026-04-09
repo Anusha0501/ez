@@ -1,0 +1,9 @@
+python-pptx==0.6.23
+google-generativeai==0.8.3
+markdown==3.7
+pydantic==2.9.2
+matplotlib==3.9.2
+pillow==10.4.0
+python-dotenv==1.0.1
+rich==13.9.4
+typer==0.12.5
