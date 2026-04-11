@@ -301,21 +301,21 @@ class StorylineAgent(GeminiAgent):
         
         # Fallback distribution
         def _create_fallback_storyline(self, parsed_data: Dict, insights: Dict) -> Dict[str, Any]:
-        """Create fallback storyline when Gemini fails."""
-        sections = parsed_data.get("sections", [])
-        elements = parsed_data.get("elements", [])
-        
-        # Create basic storyline structure
-        fallback_storyline = {
-            "introduction": 2,
-            "summary": 1,
-            "analysis": max(3, len(sections)),
-            "strategy": max(2, len(sections)),
-            "implementation": max(1, len(sections)),
-            "conclusion": 2
-        }
-        
-        return fallback_storyline
+            """Create fallback storyline when Gemini fails."""
+            sections = parsed_data.get("sections", [])
+            elements = parsed_data.get("elements", [])
+            
+            # Create basic storyline structure
+            fallback_storyline = {
+                "introduction": 2,
+                "summary": 1,
+                "analysis": max(3, len(sections)),
+                "strategy": max(2, len(sections)),
+                "implementation": max(1, len(sections)),
+                "conclusion": 2
+            }
+            
+            return fallback_storyline
     
     def _create_detailed_structure(self, narrative_flow: List[str], content_distribution: Dict[str, int], content_context: str) -> List[Dict[str, Any]]:
         """Create detailed slide structure based on narrative flow and distribution."""

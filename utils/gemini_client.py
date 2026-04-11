@@ -6,6 +6,7 @@ import time
 import random
 import json
 import logging
+import os
 from typing import Dict, Any, Optional
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -19,7 +20,8 @@ class GeminiClient:
     def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash"):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY environment variable is required")
+            logging.warning("GEMINI_API_KEY environment variable not found - some features may not work")
+            return  # Exit early without configuring
         
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(model_name)
@@ -27,6 +29,10 @@ class GeminiClient:
     
     def generate_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """Generate a text response from Gemini."""
+        if not self.api_key:
+            self.logger.warning("Cannot generate response: Gemini API key not configured")
+            return "API key not configured - response generation unavailable"
+        
         try:
             if system_prompt:
                 full_prompt = f"System: {system_prompt}\n\nUser: {prompt}"
