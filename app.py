@@ -86,10 +86,17 @@ def display_agent_logs(logs: List[Dict]):
     
     with st.expander("🤖 Agent Execution Logs", expanded=False):
         for i, log in enumerate(logs):
-            agent_name = log.get('agent', 'Unknown')
-            timestamp = log.get('timestamp', '')
-            action = log.get('action', '')
-            details = log.get('details', '')
+            if isinstance(log, dict):
+                agent_name = log.get('agent', 'Unknown')
+                timestamp = log.get('timestamp', '')
+                action = log.get('action', '')
+                details = log.get('details', '')
+            else:
+                # Handle string logs
+                agent_name = 'Unknown'
+                timestamp = ''
+                action = str(log)
+                details = ''
             
             # Create log entry with status indicators
             with st.container():
@@ -207,7 +214,10 @@ def main():
             st.metric("Slides Generated", slide_count)
         
         # Check if fallbacks were used
-        fallback_used = any("fallback" in log.get('action', '').lower() for log in st.session_state.agent_logs)
+        fallback_used = any(
+            "fallback" in (log.get('action', '') if isinstance(log, dict) else str(log)).lower()
+            for log in st.session_state.agent_logs
+        )
         if fallback_used:
             st.warning("⚠ Some agents used fallback logic → output generated")
         
