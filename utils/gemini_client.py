@@ -10,6 +10,7 @@ import os
 from typing import Dict, Any, Optional
 import google.generativeai as genai
 from dotenv import load_dotenv
+from utils.groq_client import GroqClient
 
 load_dotenv()
 
@@ -25,81 +26,94 @@ class GeminiClient:
         else:
             self.api_key = os.getenv("GEMINI_API_KEY")
         self.model = None
+        self.groq_client = GroqClient()
         if not self.api_key:
             self.logger.warning("GEMINI_API_KEY environment variable not found - some features may not work")
             return
 
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(model_name)
+
+    def _build_prompt(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        if system_prompt:
+            return f"System: {system_prompt}\n\nUser: {prompt}"
+        return prompt
+
+    def _parse_structured_text(self, text: str) -> Dict[str, Any]:
+        """Parse structured JSON-like text into a Python object."""
+        if not text:
+            return {}
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            import re
+            json_match = re.search(r'\{.*\}|\[.*\]', text, re.DOTALL)
+            if json_match:
+                try:
+                    return json.loads(json_match.group(0))
+                except Exception:
+                    return {}
+        return {}
     
     def generate_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """Generate a text response from Gemini."""
-        if not self.api_key or self.model is None:
-            self.logger.warning("Cannot generate response: Gemini API key not configured")
-            return "API key not configured - response generation unavailable"
-        
+        full_prompt = self._build_prompt(prompt, system_prompt)
+        if self.api_key and self.model is not None:
+            try:
+                self.logger.info("Using Gemini")
+                response = self.model.generate_content(full_prompt)
+                if response and response.text:
+                    return response.text
+            except Exception as e:
+                self.logger.warning(f"Gemini failed → using Groq ({str(e)})")
+        else:
+            self.logger.warning("Gemini failed → using Groq (Gemini not configured)")
+
         try:
-            if system_prompt:
-                full_prompt = f"System: {system_prompt}\n\nUser: {prompt}"
-            else:
-                full_prompt = prompt
-            
-            response = self.model.generate_content(full_prompt)
-            return response.text
-            
+            groq_text = self.groq_client.call_groq(full_prompt)
+            if groq_text:
+                return groq_text
         except Exception as e:
-            self.logger.error(f"Gemini API error: {str(e)}")
-            raise
+            self.logger.warning(f"Groq failed → using fallback ({str(e)})")
+
+        return "API key not configured - response generation unavailable"
     
     def generate_structured_response(self, prompt: str, system_prompt: Optional[str] = None, 
                                    output_schema: Optional[Dict] = None, 
                                    max_retries: int = 3) -> Dict[str, Any]:
         """Generate a structured JSON response from Gemini with retry logic."""
-        if not self.api_key or self.model is None:
-            self.logger.warning("Cannot generate structured response: Gemini API key not configured")
-            return {}
+        full_prompt = self._build_prompt(prompt, system_prompt)
+        if output_schema:
+            full_prompt += f"\n\nReturn strictly valid JSON matching this schema:\n{json.dumps(output_schema)}"
 
-        for attempt in range(max_retries):
-            try:
-                # Build the full prompt
-                full_prompt = prompt
-                if system_prompt:
-                    full_prompt = f"System: {system_prompt}\n\nUser: {prompt}"
-                else:
-                    full_prompt = prompt
-                
-                response = self.model.generate_content(full_prompt)
-                
-                # Check if response is valid
-                if response and response.text:
-                    try:
-                        # Try to parse as JSON
-                        parsed_response = json.loads(response.text)
-                        return parsed_response
-                    except json.JSONDecodeError:
-                        # If JSON parsing fails, try to extract with regex
-                        import re
-                        json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-                        if json_match:
-                            try:
-                                return json.loads(json_match.group(0))
-                            except:
-                                pass
-                
-                # Log retry attempt
+        # 1) Gemini first
+        if self.api_key and self.model is not None:
+            for attempt in range(max_retries):
+                try:
+                    self.logger.info("Using Gemini")
+                    response = self.model.generate_content(full_prompt)
+                    parsed = self._parse_structured_text(response.text if response else "")
+                    if parsed:
+                        return parsed
+                except Exception as e:
+                    self.logger.warning(f"Gemini failed → using Groq ({str(e)})")
+                    break
                 self.logger.info(f"Gemini call attempt {attempt + 1}/{max_retries}")
-                
-                # If we got a valid response, return it
-                if response and response.text:
-                    return response.text
-            
-            except json.JSONDecodeError as e:
-                self.logger.error(f"Failed to parse JSON response: {response.text}")
-                raise ValueError(f"Invalid JSON response from Gemini: {str(e)}")
-                
-            except Exception as e:
-                self.logger.error(f"Gemini API error: {str(e)}")
-                raise
+        else:
+            self.logger.warning("Gemini failed → using Groq (Gemini not configured)")
+
+        # 2) Groq fallback
+        try:
+            groq_text = self.groq_client.call_groq(full_prompt)
+            parsed = self._parse_structured_text(groq_text)
+            if parsed:
+                return parsed
+            self.logger.warning("Groq failed → using fallback (unparseable response)")
+        except Exception as e:
+            self.logger.warning(f"Groq failed → using fallback ({str(e)})")
+
+        # 3) Final fallback
+        return {}
     
     def test_connection(self) -> bool:
         """Test the Gemini API connection."""
