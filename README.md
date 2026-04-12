@@ -62,7 +62,7 @@ git clone <repository-url>
 cd ez
 ```
 
-2. **Install dependencies**
+2. **Install dependencies** (CLI and Streamlit share the same `requirements.txt`)
 ```bash
 pip install -r requirements.txt
 ```
@@ -83,6 +83,9 @@ python main.py input.md output.pptx --verbose
 
 # Generate sample markdown
 python main.py --sample > sample.md
+
+# Web UI (same venv / same requirements.txt)
+streamlit run app.py
 ```
 
 ### Streamlit app (`app.py`) vs CLI (`main.py`)
