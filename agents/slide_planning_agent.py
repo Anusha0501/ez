@@ -36,72 +36,12 @@ class SlidePlanningAgent(GeminiAgent):
         super().__init__("slide_planning_agent", gemini_client, system_prompt)
     
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create detailed plans for each slide."""
-        try:
-            self.log_reasoning("start", "Starting slide planning")
-            
-            # Handle both dict and list inputs safely
-            storyline = input_data.get("storyline", {})
-            if isinstance(storyline, list):
-                storyline = storyline[0] if len(storyline) > 0 else {}
-            # Ensure storyline is a dict
-            if not isinstance(storyline, dict):
-                storyline = {}
-            
-            insights = input_data.get("insights", {})
-            if isinstance(insights, list):
-                insights = insights[0] if len(insights) > 0 else {}
-            # Ensure insights is a dict
-            if not isinstance(insights, dict):
-                insights = {}
-            
-            if not storyline:
-                raise ValueError("No storyline provided")
-            
-            # Prepare context for slide planning
-            planning_context = self._prepare_planning_context(storyline, insights)
-            
-            self.log_reasoning("analyze_structure", "Analyzing storyline for slide planning", {
-                "slide_count": storyline.get("slide_count", 0),
-                "structure_items": len(storyline.get("structure", [])),
-                "key_themes": len(storyline.get("key_themes", []))
-            })
-            
-            # Create plans for each slide
-            self.log_reasoning("create_plans", "Creating detailed slide plans")
-            slide_plans = self._create_slide_plans(planning_context)
-            
-            # Validate and optimize plans
-            self.log_reasoning("validate_plans", "Validating and optimizing slide plans")
-            validated_plans = self._validate_and_optimize_plans(slide_plans, planning_context)
-            
-            # Create planning summary
-            self.log_reasoning("create_summary", "Creating planning summary")
-            planning_summary = self._create_planning_summary(validated_plans)
-            
-            output = {
-                "slide_plans": validated_plans,
-                "planning_summary": planning_summary,
-                "planning_metadata": {
-                    "total_slides": len(validated_plans),
-                    "slides_with_charts": sum(1 for plan in validated_plans if plan.get("chart_data")),
-                    "slides_with_visuals": sum(1 for plan in validated_plans if plan.get("visual_elements")),
-                    "avg_content_blocks": sum(len(plan.get("content_blocks", [])) for plan in validated_plans) / len(validated_plans) if validated_plans else 0,
-                    "text_heavy_slides": self._identify_text_heavy_slides(validated_plans)
-                }
-            }
-            
-            self.log_reasoning("complete", "Successfully created slide plans", {
-                "total_plans": len(validated_plans),
-                "charts_planned": output["planning_metadata"]["slides_with_charts"],
-                "visuals_planned": output["planning_metadata"]["slides_with_visuals"]
-            })
-            
-            return output
-            
-        except Exception as e:
-            self.logger.error(f"Error in slide planning agent: {str(e)}")
-            raise
+        """Placeholder-only slide planning stage (no LLM/API calls)."""
+        return {
+            "slide_plans": [],
+            "planning_summary": {"mode": "placeholder_only"},
+            "planning_metadata": {"placeholder_only": True},
+        }
     
     def _prepare_planning_context(self, storyline: Dict, insights: Dict) -> str:
         """Prepare comprehensive context for slide planning."""

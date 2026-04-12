@@ -11,6 +11,7 @@ from utils.safe_executor import (
     create_minimal_pptx_fallback,
     log_agent_step,
 )
+from utils.groq_client import generate_presentation_content
 
 
 class FaultTolerantOrchestrator(Orchestrator):
@@ -33,7 +34,7 @@ class FaultTolerantOrchestrator(Orchestrator):
         self.logger = logging.getLogger("fault_tolerant_orchestrator")
 
     def execute_workflow_robust(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Execute a reduced pipeline with fallbacks and write PPTX to output_path."""
+        """Execute single-call Groq pipeline and write PPTX to output_path."""
         self.execution_logs = []
 
         try:
@@ -41,13 +42,9 @@ class FaultTolerantOrchestrator(Orchestrator):
             parsed_data = self.agents["parser_agent"].process(input_data)
             log_agent_step("Parser Agent", "Completed successfully", logs=self.execution_logs)
 
-            insights_data = self._execute_insight_with_fallback(parsed_data)
-            storyline_data = self._execute_storyline_with_fallback(parsed_data, insights_data)
-            slide_plans_data = self._execute_slide_planning_with_fallback(
-                parsed_data, insights_data, storyline_data
-            )
-
-            final_data = self._generate_final_presentation(slide_plans_data, parsed_data, input_data)
+            markdown_content = input_data.get("markdown_content", "")
+            generated_content = generate_presentation_content(markdown_content)
+            final_data = self._generate_final_presentation(generated_content, parsed_data, input_data)
             return final_data
 
         except Exception as e:
@@ -209,18 +206,19 @@ class FaultTolerantOrchestrator(Orchestrator):
         parsed_data: Dict[str, Any],
         input_data: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Write PPTX from slide plans (robust reduced pipeline)."""
+        """Write PPTX from generated slides (single-call Groq mode)."""
         output_path = input_data.get("output_path", "output.pptx")
         body = self._document_body(parsed_data)
         log_agent_step("PPTX Generator", "Creating final presentation", logs=self.execution_logs)
 
         try:
-            layout_slides = self._slide_plans_to_layout_slides(slide_plans_data)
+            raw_slides = slide_plans_data.get("slides", []) if isinstance(slide_plans_data, dict) else []
+            layout_slides = [{"title": s.get("title", "Slide"), "bullets": s.get("bullets", [])} for s in raw_slides if isinstance(s, dict)]
             if not layout_slides:
                 return self._write_emergency_pptx(input_data)
 
             result = self.agents["pptx_generator_agent"].process({
-                "layout_data": {"layout_data": layout_slides},
+                "layout_data": {"slides": layout_slides},
                 "chart_data": {"chart_specifications": []},
                 "storyline": {},
                 "output_path": output_path,
