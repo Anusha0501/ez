@@ -33,15 +33,12 @@ class Orchestrator:
             )
             
             # Step 2: Extract Insights
-            insights_data = self._execute_agent_step(
-                "insight_agent",
-                {"parsed_data": parsed_data}
-            )
+            insights_data = self._execute_agent_step("insight_agent", parsed_data)
             
             # Step 3: Create Storyline
             storyline_data = self._execute_agent_step(
                 "storyline_agent",
-                {"parsed_data": parsed_data, "insights": insights_data}
+                {"parsed_data": parsed_data.get("parsed_data", {}), "insights": insights_data}
             )
             
             # Step 4: Plan Slides
@@ -59,14 +56,14 @@ class Orchestrator:
             # Step 6: Visual Transformation (with feedback loop)
             visual_data = self._execute_with_feedback(
                 "visual_transformation_agent",
-                {"classified_slides": classified_slides, "parsed_data": parsed_data},
+                {"classified_slides": classified_slides, "parsed_data": parsed_data.get("parsed_data", {})},
                 validation_func=self._validate_visual_output
             )
             
             # Step 7: Chart Decisions
             chart_data = self._execute_agent_step(
                 "chart_decision_agent",
-                {"visual_data": visual_data, "parsed_data": parsed_data}
+                {"visual_data": visual_data, "parsed_data": parsed_data.get("parsed_data", {})}
             )
             
             # Step 8: Layout Engine
