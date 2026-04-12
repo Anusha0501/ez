@@ -342,54 +342,38 @@ class InsightAgent(GeminiAgent):
     
     def _create_fallback_insights(self, parsed_data: Dict) -> Dict[str, Any]:
         """Create fallback insights when Gemini fails."""
+        self.logger.warning("Gemini failed → using fallback")
         sections = parsed_data.get("sections", [])
         elements = parsed_data.get("elements", [])
-        
-        # Extract basic insights from content
-        fallback_insights = []
-        
-        # Add section-based insights
-        for section in sections[:3]:  # Limit to first 3 sections
-            section_title = section.get("title", "Unknown Section")
-            fallback_insights.append({
-                "text": f"Key theme: {section_title}",
-                "importance": "medium"
-            })
-        
-        # Add element-based insights
-        text_elements = [e for e in elements if e.get("type") == "text"]
-        if text_elements:
-            fallback_insights.append({
-                "text": f"Document contains {len(text_elements)} text elements",
-                "importance": "low"
-            })
-        
-        # Add numeric data insights
         numeric_data = parsed_data.get("numeric_data", [])
-        if numeric_data:
-            fallback_insights.append({
-                "text": f"Document contains {len(numeric_data)} numeric data points",
-                "importance": "high"
-            })
-        
-        # Add structure insights
-        total_elements = len(elements)
-        total_sections = len(sections)
-        fallback_insights.append({
-            "text": f"Document structure: {total_sections} sections, {total_elements} elements",
-            "importance": "medium"
-        })
+
+        fallback_texts = [
+            "Key theme identified from document",
+            "Important trend observed",
+            "Primary conclusion derived",
+            "Supporting evidence noted",
+            "Final takeaway",
+        ]
+        fallback_insights = [
+            {"text": text, "importance": 0.7, "category": "fallback", "supporting_data": []}
+            for text in fallback_texts
+        ]
         
         return {
             "insights": fallback_insights,
             "executive_summary": {
-                "key_points": fallback_insights[:3],  # Top 3 insights
-                "themes": [fallback_insights[0].get("text", "")] if fallback_insights else []
+                "main_message": "Auto-generated summary based on document structure.",
+                "key_insights": [i["text"] for i in fallback_insights[:3]],
+                "recommendations": ["Review key findings", "Validate critical assumptions", "Define next steps"],
+                "metrics": []
             },
-            "themes": fallback_insights,
-            "metrics": numeric_data[:5] if numeric_data else [],
+            "themes": [
+                {"name": "Document Theme", "description": fallback_insights[0]["text"], "relevance": 0.8},
+                {"name": "Observed Trend", "description": fallback_insights[1]["text"], "relevance": 0.7},
+            ],
+            "metrics": numeric_data[:5] if numeric_data else [{"name": "Sections", "value": str(len(sections)), "importance": 0.6, "category": "structure"}],
             "analysis_metadata": {
-                "content_depth": self._assess_content_depth(""),
+                "content_depth": self._assess_content_depth(" ".join([e.get("content", "") for e in elements[:5]])),
                 "fallback_used": True
             }
         }

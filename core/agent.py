@@ -103,8 +103,9 @@ class GeminiAgent(BaseAgent):
             return response
             
         except Exception as e:
-            self.logger.error(f"Gemini API error in {self.name}: {str(e)}")
-            raise
+            self.logger.warning(f"Gemini failed → using fallback ({self.name}): {str(e)}")
+            self.log_reasoning("gemini_fallback", "Gemini failed → using fallback", {"error": str(e)})
+            return {}
     
     def process_with_gemini(self, input_data: Dict[str, Any], prompt_template: str, 
                           output_schema: Optional[Dict] = None) -> Dict[str, Any]:

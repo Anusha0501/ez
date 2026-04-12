@@ -266,6 +266,7 @@ class SlidePlanningAgent(GeminiAgent):
     
     def _create_fallback_plans(self, planning_context: str) -> List[Dict[str, Any]]:
         """Create basic fallback plans if Gemini fails."""
+        self.logger.warning("Gemini failed → using fallback")
         # Extract slide count from context
         import re
         slide_count_match = re.search(r'Total Slides: (\d+)', planning_context)
@@ -277,6 +278,7 @@ class SlidePlanningAgent(GeminiAgent):
         plans.append({
             "title": "Title Slide",
             "key_message": "Introduction to the presentation",
+            "content": ["Presentation Title", "Subtitle or tagline"],
             "content_blocks": [
                 {"type": "title", "content": "Presentation Title"},
                 {"type": "subtitle", "content": "Subtitle or tagline"}
@@ -289,6 +291,13 @@ class SlidePlanningAgent(GeminiAgent):
         plans.append({
             "title": "Agenda",
             "key_message": "Overview of what will be covered",
+            "content": [
+                "Executive Summary",
+                "Current Situation",
+                "Key Findings",
+                "Recommendations",
+                "Next Steps"
+            ],
             "content_blocks": [
                 {"type": "bullet", "content": "Executive Summary"},
                 {"type": "bullet", "content": "Current Situation"},
@@ -308,6 +317,12 @@ class SlidePlanningAgent(GeminiAgent):
             plans.append({
                 "title": f"Key Point {slide_num - 2}",
                 "key_message": f"Important insight or finding {slide_num - 2}",
+                "content": [
+                    f"Main Point {slide_num - 2}",
+                    "Supporting point 1",
+                    "Supporting point 2",
+                    "Key takeaway"
+                ],
                 "content_blocks": [
                     {"type": "heading", "content": f"Main Point {slide_num - 2}"},
                     {"type": "bullet", "content": "Supporting point 1"},
@@ -331,6 +346,13 @@ class SlidePlanningAgent(GeminiAgent):
             if not all(key in plan for key in ["title", "key_message", "content_blocks", "visual_elements"]):
                 self.logger.warning(f"Slide {i+1} missing required fields, using fallback")
                 plan = self._create_minimal_plan(i+1)
+
+            if "content" not in plan or not isinstance(plan.get("content"), list) or not plan["content"]:
+                plan["content"] = [
+                    block.get("content", "")
+                    for block in plan.get("content_blocks", [])
+                    if isinstance(block, dict) and block.get("content")
+                ] or [plan.get("key_message", f"Slide {i+1}")]
             
             # Optimize content blocks
             content_blocks = plan.get("content_blocks", [])
@@ -362,6 +384,7 @@ class SlidePlanningAgent(GeminiAgent):
         return {
             "title": f"Slide {slide_number}",
             "key_message": f"Key message for slide {slide_number}",
+            "content": [f"Main Point {slide_number}"],
             "content_blocks": [
                 {"type": "heading", "content": f"Main Point {slide_number}"}
             ],
