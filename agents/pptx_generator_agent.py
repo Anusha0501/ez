@@ -12,7 +12,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 
 from core.agent import BaseAgent
-from core.models import Slide, ChartData, ChartType
+from core.models import ChartData, ChartType
 from utils.pptx_utils import PPTXUtils
 
 
@@ -48,9 +48,45 @@ class PPTXGeneratorAgent(BaseAgent):
             "subtitle": 32,
             "heading": 28,
             "subheading": 20,
-            "body": 18,
             "small": 14
         }
+    
+    def normalize_slides(self, slides):
+        """Normalize slide data structure to ensure consistent format."""
+        normalized = []
+        
+        for i, slide in enumerate(slides):
+            if isinstance(slide, str):
+                normalized.append({
+                    "title": f"Slide {i+1}",
+                    "content": [slide]
+                })
+                continue
+            
+            if isinstance(slide, dict):
+                title = (
+                    slide.get("title") or 
+                    slide.get("heading") or 
+                    slide.get("slide_title") or 
+                    f"Slide {i+1}"
+                )
+                content = (
+                    slide.get("content") or
+                    slide.get("points") or
+                    slide.get("bullets") or
+                    slide.get("text") or
+                    ["Auto-generated content"]
+                )
+                
+                if isinstance(content, str):
+                    content = [content]
+                
+                normalized.append({
+                    "title": title,
+                    "content": content
+                })
+        
+        return normalized
     
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate the final PowerPoint presentation."""
@@ -62,8 +98,30 @@ class PPTXGeneratorAgent(BaseAgent):
             storyline = input_data.get("storyline", {})
             output_path = input_data.get("output_path", "output.pptx")
             
-            if not layout_data:
-                raise ValueError("No layout data provided")
+            # Get slide layouts from different possible sources
+            if isinstance(layout_data, dict):
+                slide_layouts = (
+                    layout_data.get("layout_data", []) or
+                    layout_data.get("slides", []) or
+                    []
+                )
+            elif isinstance(layout_data, list):
+                slide_layouts = layout_data
+            else:
+                slide_layouts = []
+            
+            # Normalize slides to ensure consistent structure
+            slides = self.normalize_slides(slide_layouts)
+            
+            # Fallback for empty slides
+            if not slides:
+                slides = [{
+                    "title": "Overview",
+                    "content": ["Auto-generated presentation"]
+                }]
+            
+            # Log slide normalization
+            self.log_reasoning("normalize_slides", f"Slides normalized: {len(slides)}")
             
             # Create presentation
             self.log_reasoning("create_presentation", "Creating new presentation")
@@ -71,45 +129,17 @@ class PPTXGeneratorAgent(BaseAgent):
             
             # Process each slide
             self.log_reasoning("process_slides", "Processing slides", {
-                "total_slides": len(layout_data.get("layout_data", [])),
+                "total_slides": len(slides),
                 "output_path": output_path
             })
-            
-            slide_layouts = layout_data.get("layout_data", [])
             chart_specs = chart_data.get("chart_specifications", [])
             
-            # Ensure slide structure before rendering
-            if not slide_layouts or not isinstance(slide_layouts, list):
-                slide_layouts = []
-            
-            # Add fallback for empty slides
-            if not slide_layouts:
-                slide_layouts = [
-                    {
-                        "title": "Overview",
-                        "content": ["Auto-generated presentation"]
-                    }
-                ]
-            
-            # Log slide count for debugging
-            self.log_reasoning("slide_count", f"Processing {len(slide_layouts)} slides")
-            
-            for i, slide_layout in enumerate(slide_layouts):
-                if not isinstance(slide_layout, dict):
-                    slide_layout = {
-                        "title": f"Slide {i+1}",
-                        "content": [str(slide_layout)]
-                    }
-                
-                if "title" not in slide_layout:
-                    slide_layout["title"] = f"Slide {i+1}"
-                
-                if "content" not in slide_layout:
-                    slide_layout["content"] = ["Auto-generated content"]
-                slide = self._create_slide(prs, slide_layout, chart_specs, i + 1)
+            # Process normalized slides
+            for i, slide_data in enumerate(slides):
+                slide = self._create_slide_from_normalized(prs, slide_data, chart_specs, i + 1)
                 self.log_reasoning("create_slide", f"Created slide {i+1}", {
-                    "slide_type": slide_layout.get("slide_type"),
-                    "template": slide_layout.get("layout_template")
+                    "slide_title": slide_data.get("title", ""),
+                    "content_items": len(slide_data.get("content", []))
                 })
             
             # Apply theme and styling
@@ -375,6 +405,45 @@ class PPTXGeneratorAgent(BaseAgent):
             self._add_chart_to_slide(slide, chart_spec)
         
         return slide
+    
+    def _create_slide_from_normalized(self, prs: Presentation, slide_data: Dict[str, Any], chart_specs: List[Dict], slide_number: int) -> Any:
+        """Create slide from normalized structure."""
+        slide_layout_info = prs.slide_layouts[1]  # Title and content layout
+        ppt_slide = prs.slides.add_slide(slide_layout_info)
+        
+        # Add title
+        title = slide_data.get("title", f"Slide {slide_number}")
+        if ppt_slide.shapes.title:
+            title_shape = ppt_slide.shapes.title
+            title_shape.text = title
+            
+            # Format title
+            text_frame = title_shape.text_frame
+            for paragraph in text_frame.paragraphs:
+                paragraph.font.name = self.fonts["title"]
+                paragraph.font.size = Pt(self.font_sizes["title"])
+                paragraph.font.color.rgb = self.theme_colors["primary"]
+                paragraph.alignment = PP_ALIGN.CENTER
+        
+        # Add content
+        content = slide_data.get("content", [])
+        if isinstance(content, list) and content:
+            content_text = "\n".join(str(item) for item in content)
+            
+            # Try to use content placeholder first
+            if len(ppt_slide.placeholders) > 1:
+                content_shape = ppt_slide.placeholders[1]
+                content_shape.text = content_text
+            else:
+                # Fallback: add text box
+                self._add_text_content(ppt_slide, content_text, {"left": 1, "top": 2, "width": 8, "height": 4})
+        
+        # Add chart if applicable
+        chart_spec = self._find_chart_for_slide(chart_specs, slide_number)
+        if chart_spec:
+            self._add_chart_to_slide(ppt_slide, chart_spec)
+        
+        return ppt_slide
     
     def _add_title_text(self, slide: Any, text: str, position: Dict[str, Any]):
         """Add title text to slide."""
