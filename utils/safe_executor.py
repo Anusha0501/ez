@@ -18,7 +18,10 @@ def safe_execute(agent_name: str, agent_func: Callable, input_data: Dict[str, An
         if result is None or result == {}:
             raise Exception("Empty result from agent")
         
-        logs.append(f"✅ {agent_name} completed successfully")
+        logs.append({
+            "agent": agent_name,
+            "action": "completed"
+        })
         return result
         
     except Exception as e:
