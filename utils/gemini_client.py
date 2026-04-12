@@ -72,7 +72,7 @@ class GeminiClient:
             if logs is not None:
                 logs.append(f"Gemini failed: {gemini_error}")
                 logs.append("Switching to Groq")
-            self.logger.warning(f"Gemini failed → using Groq ({str(gemini_error)})")
+            self.logger.warning(f"Gemini failed → switching to Groq ({str(gemini_error)})")
             self.logger.info("Switching to Groq")
 
             try:

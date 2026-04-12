@@ -15,11 +15,13 @@ try:
 except Exception:  # pragma: no cover - streamlit optional in non-UI test env
     st = None
 
+GROQ_MODEL = "llama3-8b-8192"
+
 
 class GroqClient:
     """Thin wrapper for Groq chat completions."""
 
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "llama3-70b-8192"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = GROQ_MODEL):
         self.logger = logging.getLogger("groq_client")
         self.api_key = api_key
         self.model_name = model_name
@@ -52,9 +54,15 @@ class GroqClient:
     def call_groq(self, prompt: str) -> str:
         """Call Groq and return response text."""
         client = self.get_client()
-
-        response = client.chat.completions.create(
-            model=self.model_name,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return (response.choices[0].message.content or "").strip()
+        self.logger.info(f"Using Groq model: {self.model_name}")
+        try:
+            response = client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            response_text = (response.choices[0].message.content or "").strip()
+            if not response_text or len(response_text.strip()) < 10:
+                raise Exception("Groq returned empty response")
+            return response_text
+        except Exception as e:
+            raise Exception(f"Groq error: {str(e)}")
