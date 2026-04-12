@@ -32,78 +32,17 @@ class StorylineAgent(GeminiAgent):
         super().__init__("storyline_agent", gemini_client, system_prompt)
     
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a presentation storyline from analyzed content."""
-        try:
-            self.log_reasoning("start", "Starting storyline creation")
-            
-            parsed_data = input_data.get("parsed_data", {})
-            insights = input_data.get("insights", {})
-            executive_summary = insights.get("executive_summary", {})
-            themes = insights.get("themes", [])
-            
-            if not parsed_data:
-                raise ValueError("No parsed data provided")
-            
-            # Prepare content for storyline creation
-            content_context = self._prepare_content_context(parsed_data, insights)
-            
-            self.log_reasoning("analyze_structure", "Analyzing content for storyline structure", {
-                "sections_count": len(parsed_data.get("sections", [])),
-                "insights_count": len(insights.get("insights", [])),
-                "themes_count": len(themes)
-            })
-            
-            # Determine optimal slide count
-            self.log_reasoning("determine_slide_count", "Determining optimal slide count")
-            slide_count = self._determine_slide_count(content_context)
-            
-            # Create narrative flow
-            self.log_reasoning("create_narrative", "Creating presentation narrative")
-            narrative_flow = self._create_narrative_flow(content_context, slide_count)
-            
-            # Define content distribution
-            self.log_reasoning("distribute_content", "Distributing content across slides")
-            content_distribution = self._distribute_content(slide_count, content_context)
-            
-            # Create detailed structure
-            self.log_reasoning("create_structure", "Creating detailed slide structure")
-            structure = self._create_detailed_structure(narrative_flow, content_distribution, content_context)
-            
-            # Extract key themes for emphasis
-            self.log_reasoning("extract_key_themes", "Extracting key themes for emphasis")
-            key_themes = self._extract_key_themes(themes, executive_summary)
-            
-            output = {
-                "narrative_flow": narrative_flow,
-                "slide_count": slide_count,
-                "content_distribution": content_distribution,
-                "key_themes": key_themes,
-                "structure": structure,
-                "storyline_metadata": {
-                    "main_message": executive_summary.get("main_message", ""),
-                    "presentation_type": self._determine_presentation_type(content_context),
-                    "complexity_level": self._assess_complexity(content_context),
-                    "target_audience": self._infer_target_audience(content_context)
-                }
-            }
-            
-            self.log_reasoning("complete", "Successfully created storyline", {
-                "slide_count": slide_count,
-                "narrative_steps": len(narrative_flow),
-                "key_themes": len(key_themes)
-            })
-            
-            return output
-            
-        except Exception as e:
-            self.logger.error(f"Error in storyline agent: {str(e)}")
-            # Return fallback result instead of crashing
-            fallback_result = self._create_fallback_storyline({"parsed_data": parsed_data, "insights": insights})
-            self.log_reasoning("fallback", "Using fallback storyline due to agent failure", {
-                "error": str(e),
-                "fallback_applied": True
-            })
-            return fallback_result
+        """Placeholder-only storyline stage (no LLM/API calls)."""
+        parsed_data = input_data.get("parsed_data", {}) or {}
+        title = parsed_data.get("title", "Presentation") if isinstance(parsed_data, dict) else "Presentation"
+        return {
+            "narrative_flow": ["Overview", "Key points", "Recommendations", "Next steps"],
+            "slide_count": 6,
+            "content_distribution": {},
+            "key_themes": ["Single-call mode"],
+            "structure": [{"slide_number": 1, "title": title}],
+            "storyline_metadata": {"placeholder_only": True},
+        }
     
     def _prepare_content_context(self, parsed_data: Dict, insights: Dict) -> str:
         """Prepare a comprehensive context for storyline creation."""

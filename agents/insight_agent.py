@@ -30,72 +30,16 @@ class InsightAgent(GeminiAgent):
         super().__init__("insight_agent", gemini_client, system_prompt)
     
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract insights from parsed markdown data."""
-        try:
-            self.log_reasoning("start", "Starting insight extraction")
-            
-            parsed_data = input_data.get("parsed_data", {})
-            numeric_data = input_data.get("numeric_data", [])
-            structure_analysis = input_data.get("structure_analysis", {})
-            
-            if not parsed_data:
-                raise ValueError("No parsed data provided")
-            
-            # Prepare content for analysis
-            content_summary = self._prepare_content_summary(parsed_data, numeric_data, structure_analysis)
-            
-            self.log_reasoning("analyze_content", "Analyzing content for insights", {
-                "elements_count": len(parsed_data.get("elements", [])),
-                "sections_count": len(parsed_data.get("sections", [])),
-                "numeric_points": len(numeric_data)
-            })
-            
-            # Extract key insights using Gemini
-            insights = self._extract_insights(content_summary)
-            
-            # Generate executive summary
-            self.log_reasoning("generate_summary", "Generating executive summary")
-            executive_summary = self._generate_executive_summary(content_summary, insights)
-            
-            # Identify key themes
-            self.log_reasoning("identify_themes", "Identifying key themes")
-            themes = self._identify_themes(content_summary)
-            
-            # Extract important metrics
-            self.log_reasoning("extract_metrics", "Extracting important metrics")
-            metrics = self._extract_metrics(numeric_data, content_summary)
-            
-            output = {
-                "insights": insights,
-                "executive_summary": executive_summary,
-                "themes": themes,
-                "metrics": metrics,
-                "analysis_metadata": {
-                    "total_insights": len(insights),
-                    "total_themes": len(themes),
-                    "total_metrics": len(metrics),
-                    "content_depth": self._assess_content_depth(content_summary)
-                }
-            }
-            
-            self.log_reasoning("complete", "Successfully extracted insights", {
-                "insights_found": len(insights),
-                "themes_found": len(themes),
-                "metrics_found": len(metrics)
-            })
-            
-            return output
-            
-        except Exception as e:
-            self.logger.error(f"Error in insight agent: {str(e)}")
-            # Return fallback result instead of crashing
-            fallback_result = self._create_fallback_insights(parsed_data)
-            self.log_reasoning("fallback", "Using fallback insights due to agent failure", {
-                "error": str(e),
-                "fallback_insights": len(fallback_result.get("insights", [])),
-                "fallback_themes": len(fallback_result.get("themes", []))
-            })
-            return fallback_result
+        """Placeholder-only insight stage (no LLM/API calls)."""
+        parsed_data = input_data.get("parsed_data", {}) or {}
+        sections = parsed_data.get("sections", []) if isinstance(parsed_data, dict) else []
+        return {
+            "insights": [{"text": f"Parsed {len(sections)} sections", "importance": "medium"}],
+            "executive_summary": {"key_points": ["Single-call mode enabled"], "themes": ["Structured slides"]},
+            "themes": [{"text": "Single-call generation", "importance": "high"}],
+            "metrics": [],
+            "analysis_metadata": {"placeholder_only": True},
+        }
     
     def _prepare_content_summary(self, parsed_data: Dict, numeric_data: List, structure_analysis: Dict) -> str:
         """Prepare a comprehensive summary of the content for analysis."""
