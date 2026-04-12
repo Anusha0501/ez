@@ -151,6 +151,7 @@ The system automatically detects and creates appropriate charts:
 
 ```bash
 GEMINI_API_KEY=your_gemini_api_key_here
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
 ### Custom Templates
