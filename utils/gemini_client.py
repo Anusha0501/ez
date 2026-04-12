@@ -18,18 +18,23 @@ class GeminiClient:
     """Client for interacting with Google Gemini API."""
     
     def __init__(self, api_key: Optional[str] = None, model_name: str = "gemini-2.0-flash"):
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.logger = logging.getLogger("gemini_client")
+        # Explicit api_key (including "") overrides env; only None reads GEMINI_API_KEY.
+        if api_key is not None:
+            self.api_key = api_key or None
+        else:
+            self.api_key = os.getenv("GEMINI_API_KEY")
+        self.model = None
         if not self.api_key:
-            logging.warning("GEMINI_API_KEY environment variable not found - some features may not work")
-            return  # Exit early without configuring
-        
+            self.logger.warning("GEMINI_API_KEY environment variable not found - some features may not work")
+            return
+
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(model_name)
-        self.logger = logging.getLogger("gemini_client")
     
     def generate_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """Generate a text response from Gemini."""
-        if not self.api_key:
+        if not self.api_key or self.model is None:
             self.logger.warning("Cannot generate response: Gemini API key not configured")
             return "API key not configured - response generation unavailable"
         
@@ -50,6 +55,10 @@ class GeminiClient:
                                    output_schema: Optional[Dict] = None, 
                                    max_retries: int = 3) -> Dict[str, Any]:
         """Generate a structured JSON response from Gemini with retry logic."""
+        if not self.api_key or self.model is None:
+            self.logger.warning("Cannot generate structured response: Gemini API key not configured")
+            return {}
+
         for attempt in range(max_retries):
             try:
                 # Build the full prompt

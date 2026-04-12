@@ -24,6 +24,7 @@ from agents import (
     PPTXGeneratorAgent
 )
 from utils.gemini_client import GeminiClient
+from utils.output_paths import pptx_output_valid
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -131,7 +132,11 @@ def main():
     
     # Header
     st.title("🧠 Markdown → PPTX Agentic Generator")
-    st.markdown("*AI-powered multi-agent system with fault tolerance*")
+    st.markdown(
+        "*Streamlit **robust mode**: parse → insights → storyline → slide plan, then PPTX "
+        "(skips visual classifier, chart/layout agents). For the full 9-agent pipeline, use "
+        "`python main.py`.*"
+    )
     
     # Sidebar controls
     with st.sidebar:
@@ -185,13 +190,10 @@ def main():
                     # Generate PPTX with robust system
                     pptx_path, agent_logs = generate_ppt_from_markdown(content, slide_count)
                 
-                if pptx_path:
-                    # Success
+                if pptx_path and pptx_output_valid(pptx_path):
                     st.session_state.processing_state = 'complete'
                     st.session_state.pptx_path = pptx_path
                     st.session_state.agent_logs = agent_logs
-                    
-                    # Display success message
                     st.success("✅ PPTX generated successfully!")
                     st.balloons()
                 else:
@@ -219,7 +221,10 @@ def main():
             for log in st.session_state.agent_logs
         )
         if fallback_used:
-            st.warning("⚠ Some agents used fallback logic → output generated")
+            st.warning(
+                "⚠ Some agents used fallback logic. Output uses the robust reduced pipeline; "
+                "for richer visuals run the CLI (`python main.py`)."
+            )
         
         # Download section
         st.subheader("💾 Download")
@@ -272,14 +277,14 @@ def generate_ppt_from_markdown(file_content: str, slide_count: int = 12) -> Tupl
                 "slide_count": slide_count
             }
             
-            # Execute multi-agent workflow
-            presentation = orchestrator.execute_workflow_robust(input_data)
-            
-            # Get execution logs
+            orchestrator.execute_workflow_robust(input_data)
             agent_logs = orchestrator.get_execution_logs()
-            
-            return tmp_file.name, agent_logs
-            
+            out_path = tmp_file.name
+            if not pptx_output_valid(out_path):
+                logger.error("PPTX missing or empty after robust workflow: %s", out_path)
+                return None, agent_logs
+            return out_path, agent_logs
+
     except Exception as e:
         st.error(f"Error generating PPTX: {str(e)}")
         logger.error(f"PPTX generation failed: {str(e)}")

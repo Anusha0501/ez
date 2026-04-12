@@ -85,6 +85,11 @@ python main.py input.md output.pptx --verbose
 python main.py --sample > sample.md
 ```
 
+### Streamlit app (`app.py`) vs CLI (`main.py`)
+
+- **`main.py`** runs the **full 9-agent pipeline** (parser through PPTX generator), including visual transformation, chart decisions, and the layout engine.
+- **`streamlit run app.py`** uses **robust / reduced mode**: parse → insights → storyline → slide planning, then writes the deck **directly** with the PPTX generator (skips classifier, visual transform, chart-decision, and layout agents). This path favors reliability and graceful fallbacks when Gemini steps fail; quality and visuals may be simpler than the CLI pipeline.
+
 ## 📖 Usage Examples
 
 ### Basic Conversion

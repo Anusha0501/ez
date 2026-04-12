@@ -29,16 +29,18 @@ from agents import (
 from utils.gemini_client import GeminiClient
 
 
-def setup_logging(verbose: bool = False):
-    """Setup logging configuration."""
+def setup_logging(verbose: bool = False, log_file: Optional[str] = None):
+    """Setup logging configuration. Creates parent directories for the log file."""
     level = logging.DEBUG if verbose else logging.INFO
-    
+    log_path = Path(log_file or "logs/md2pptx.log")
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+
     logging.basicConfig(
         level=level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.StreamHandler(sys.stdout),
-            logging.FileHandler('logs/md2pptx.log')
+            logging.FileHandler(log_path)
         ]
     )
 
@@ -277,8 +279,8 @@ Examples:
     
     args = parser.parse_args()
     
-    # Setup logging
-    setup_logging(args.verbose)
+    # Setup logging (honors --log-file; ensures log directory exists)
+    setup_logging(args.verbose, args.log_file)
     logger = logging.getLogger("main")
     
     # Handle sample generation
