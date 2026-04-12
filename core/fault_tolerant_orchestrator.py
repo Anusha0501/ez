@@ -123,7 +123,7 @@ class FaultTolerantOrchestrator(Orchestrator):
     def _execute_slide_planning_with_fallback(self, parsed_data: Dict[str, Any], insights_data: Dict[str, Any], storyline_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute slide planning agent with fallback logic."""
         def fallback_slide_plans(data: Dict[str, Any]) -> Dict[str, Any]:
-            body = FaultTolerantOrchestrator._document_body(data.get("parsed_data", {}))
+            body = data.get("parsed_data", {})
             sections = body.get("sections", [])
             slide_plans = []
             for i, section in enumerate(sections[:10]):
