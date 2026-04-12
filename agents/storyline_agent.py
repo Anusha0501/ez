@@ -63,7 +63,7 @@ class StorylineAgent(GeminiAgent):
             
             # Define content distribution
             self.log_reasoning("distribute_content", "Distributing content across slides")
-            content_distribution = self._determine_content(slide_count, content_context)
+            content_distribution = self._distribute_content(slide_count, content_context)
             
             # Create detailed structure
             self.log_reasoning("create_structure", "Creating detailed slide structure")
