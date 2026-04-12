@@ -54,29 +54,44 @@ class GeminiClient:
                 except Exception:
                     return {}
         return {}
+
+    def call_llm(self, prompt: str, logs: Optional[list] = None) -> str:
+        """Primary LLM router: Gemini -> Groq -> deterministic fallback."""
+        try:
+            if logs is not None:
+                logs.append("Using Gemini")
+            self.logger.info("Using Gemini")
+            if not self.api_key or self.model is None:
+                raise RuntimeError("Gemini not configured")
+            response = self.model.generate_content(prompt)
+            if response and response.text:
+                return response.text
+            raise RuntimeError("Gemini returned empty response")
+
+        except Exception as gemini_error:
+            if logs is not None:
+                logs.append(f"Gemini failed: {gemini_error}")
+                logs.append("Switching to Groq")
+            self.logger.warning(f"Gemini failed → using Groq ({str(gemini_error)})")
+            self.logger.info("Switching to Groq")
+
+            try:
+                groq_text = self.groq_client.call_groq(prompt)
+                if groq_text:
+                    return groq_text
+                raise RuntimeError("Groq returned empty response")
+            except Exception as groq_error:
+                if logs is not None:
+                    logs.append(f"Groq failed: {groq_error}")
+                    logs.append("Using fallback")
+                self.logger.warning(f"Groq failed → using fallback ({str(groq_error)})")
+                self.logger.info("Using fallback")
+                return "Auto-generated content based on document structure. (API key not configured)"
     
     def generate_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """Generate a text response from Gemini."""
         full_prompt = self._build_prompt(prompt, system_prompt)
-        if self.api_key and self.model is not None:
-            try:
-                self.logger.info("Using Gemini")
-                response = self.model.generate_content(full_prompt)
-                if response and response.text:
-                    return response.text
-            except Exception as e:
-                self.logger.warning(f"Gemini failed → using Groq ({str(e)})")
-        else:
-            self.logger.warning("Gemini failed → using Groq (Gemini not configured)")
-
-        try:
-            groq_text = self.groq_client.call_groq(full_prompt)
-            if groq_text:
-                return groq_text
-        except Exception as e:
-            self.logger.warning(f"Groq failed → using fallback ({str(e)})")
-
-        return "API key not configured - response generation unavailable"
+        return self.call_llm(full_prompt)
     
     def generate_structured_response(self, prompt: str, system_prompt: Optional[str] = None, 
                                    output_schema: Optional[Dict] = None, 
@@ -86,33 +101,12 @@ class GeminiClient:
         if output_schema:
             full_prompt += f"\n\nReturn strictly valid JSON matching this schema:\n{json.dumps(output_schema)}"
 
-        # 1) Gemini first
-        if self.api_key and self.model is not None:
-            for attempt in range(max_retries):
-                try:
-                    self.logger.info("Using Gemini")
-                    response = self.model.generate_content(full_prompt)
-                    parsed = self._parse_structured_text(response.text if response else "")
-                    if parsed:
-                        return parsed
-                except Exception as e:
-                    self.logger.warning(f"Gemini failed → using Groq ({str(e)})")
-                    break
-                self.logger.info(f"Gemini call attempt {attempt + 1}/{max_retries}")
-        else:
-            self.logger.warning("Gemini failed → using Groq (Gemini not configured)")
-
-        # 2) Groq fallback
-        try:
-            groq_text = self.groq_client.call_groq(full_prompt)
-            parsed = self._parse_structured_text(groq_text)
-            if parsed:
-                return parsed
-            self.logger.warning("Groq failed → using fallback (unparseable response)")
-        except Exception as e:
-            self.logger.warning(f"Groq failed → using fallback ({str(e)})")
-
-        # 3) Final fallback
+        llm_logs = []
+        llm_text = self.call_llm(full_prompt, logs=llm_logs)
+        parsed = self._parse_structured_text(llm_text)
+        if parsed:
+            return parsed
+        self.logger.warning("Using fallback")
         return {}
     
     def test_connection(self) -> bool:

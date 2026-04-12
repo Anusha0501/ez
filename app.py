@@ -7,6 +7,7 @@ import os
 import tempfile
 import json
 import logging
+import traceback
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 
@@ -41,6 +42,8 @@ if 'processing_state' not in st.session_state:
     st.session_state.processing_state = 'idle'
 if 'pptx_path' not in st.session_state:
     st.session_state.pptx_path = None
+if 'last_error_trace' not in st.session_state:
+    st.session_state.last_error_trace = None
 
 def initialize_agents() -> Dict[str, Any]:
     """Initialize all agents with Gemini client."""
@@ -199,10 +202,12 @@ def main():
                 else:
                     # Error
                     st.session_state.processing_state = 'error'
+                    st.session_state.last_error_trace = "PPTX generation returned no valid output path."
                     st.error("❌ Failed to generate PPTX")
                     
         except Exception as e:
             st.error(f"❌ Error reading file: {str(e)}")
+            st.session_state.last_error_trace = traceback.format_exc()
     
     # Display results
     if st.session_state.processing_state == 'complete':
@@ -244,7 +249,9 @@ def main():
             display_agent_logs(st.session_state.agent_logs)
     
     elif st.session_state.processing_state == 'error':
-        st.error("❌ Processing failed. Please try again.")
+        details = st.session_state.last_error_trace or "Unknown runtime error."
+        st.error(f"❌ Processing failed: {details.splitlines()[-1]}")
+        st.code(details)
         st.info("💡 The system uses fault tolerance - errors are handled gracefully")
     
     # Footer
@@ -287,6 +294,8 @@ def generate_ppt_from_markdown(file_content: str, slide_count: int = 12) -> Tupl
 
     except Exception as e:
         st.error(f"Error generating PPTX: {str(e)}")
+        st.session_state.last_error_trace = traceback.format_exc()
+        st.code(traceback.format_exc())
         logger.error(f"PPTX generation failed: {str(e)}")
         return None, []
 
