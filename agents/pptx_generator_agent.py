@@ -78,7 +78,34 @@ class PPTXGeneratorAgent(BaseAgent):
             slide_layouts = layout_data.get("layout_data", [])
             chart_specs = chart_data.get("chart_specifications", [])
             
+            # Ensure slide structure before rendering
+            if not slide_layouts or not isinstance(slide_layouts, list):
+                slide_layouts = []
+            
+            # Add fallback for empty slides
+            if not slide_layouts:
+                slide_layouts = [
+                    {
+                        "title": "Overview",
+                        "content": ["Auto-generated presentation"]
+                    }
+                ]
+            
+            # Log slide count for debugging
+            self.log_reasoning("slide_count", f"Processing {len(slide_layouts)} slides")
+            
             for i, slide_layout in enumerate(slide_layouts):
+                if not isinstance(slide_layout, dict):
+                    slide_layout = {
+                        "title": f"Slide {i+1}",
+                        "content": [str(slide_layout)]
+                    }
+                
+                if "title" not in slide_layout:
+                    slide_layout["title"] = f"Slide {i+1}"
+                
+                if "content" not in slide_layout:
+                    slide_layout["content"] = ["Auto-generated content"]
                 slide = self._create_slide(prs, slide_layout, chart_specs, i + 1)
                 self.log_reasoning("create_slide", f"Created slide {i+1}", {
                     "slide_type": slide_layout.get("slide_type"),
@@ -147,22 +174,30 @@ class PPTXGeneratorAgent(BaseAgent):
         slide_layout_info = prs.slide_layouts[0]  # Title slide layout
         slide = prs.slides.add_slide(slide_layout_info)
         
-        # Get content areas
-        content_areas = slide_layout.get("content_areas", [])
+        # Add content from slide_layout
+        content = slide_layout.get("content", [])
+        if isinstance(content, list):
+            # Add content as text
+            content_text = "\n".join(str(item) for item in content)
+            self._add_text_content(slide, content_text, {"left": 1, "top": 2, "width": 8, "height": 4})
         
-        for area in content_areas:
-            area_type = area.get("type", "")
-            content = area.get("content", {})
+        # Handle content_areas for backward compatibility
+        content_areas = slide_layout.get("content_areas", [])
+        if content_areas:
             positioning = slide_layout.get("positioning", {})
-            area_key = f"area_{area['id'].split('_')[1]}"
             
-            if area_key in positioning:
-                pos = positioning[area_key]
+            for area in content_areas:
+                area_type = area.get("type", "")
+                area_content = area.get("content", {})
+                area_key = f"area_{area['id'].split('_')[1]}"
                 
-                if area_type == "title" and content:
-                    self._add_title_text(slide, content.get("text", ""), pos)
-                elif area_type == "subtitle" and content:
-                    self._add_subtitle_text(slide, content.get("text", ""), pos)
+                if area_key in positioning:
+                    pos = positioning[area_key]
+                    
+                    if area_type == "title" and area_content:
+                        self._add_title_text(slide, area_content.get("text", ""), pos)
+                    elif area_type == "subtitle" and area_content:
+                        self._add_subtitle_text(slide, area_content.get("text", ""), pos)
         
         return slide
     
@@ -309,22 +344,30 @@ class PPTXGeneratorAgent(BaseAgent):
         # Add title
         self._add_slide_title(slide, f"Key Points - Slide {slide_number}")
         
-        # Add content
-        content_areas = slide_layout.get("content_areas", [])
-        positioning = slide_layout.get("positioning", {})
+        # Add content from slide_layout
+        content = slide_layout.get("content", [])
+        if isinstance(content, list):
+            # Add content as text
+            content_text = "\n".join(str(item) for item in content)
+            self._add_text_content(slide, content_text, {"left": 1, "top": 2, "width": 8, "height": 4})
         
-        for area in content_areas:
-            area_type = area.get("type", "")
-            content = area.get("content", {})
-            area_key = f"area_{area['id'].split('_')[1]}"
+        # Handle content_areas for backward compatibility
+        content_areas = slide_layout.get("content_areas", [])
+        if content_areas:
+            positioning = slide_layout.get("positioning", {})
             
-            if area_key in positioning:
-                pos = positioning[area_key]
+            for area in content_areas:
+                area_type = area.get("type", "")
+                area_content = area.get("content", {})
+                area_key = f"area_{area['id'].split('_')[1]}"
                 
-                if area_type == "visual" and content:
-                    self._add_visual_element(slide, content, pos)
-                elif area_type == "text" and content:
-                    self._add_text_content(slide, content.get("text", ""), pos)
+                if area_key in positioning:
+                    pos = positioning[area_key]
+                    
+                    if area_type == "visual" and area_content:
+                        self._add_visual_element(slide, area_content, pos)
+                    elif area_type == "text" and area_content:
+                        self._add_text_content(slide, area_content.get("text", ""), pos)
         
         # Add chart if applicable
         chart_spec = self._find_chart_for_slide(chart_specs, slide_number)

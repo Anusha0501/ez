@@ -40,8 +40,20 @@ class SlidePlanningAgent(GeminiAgent):
         try:
             self.log_reasoning("start", "Starting slide planning")
             
+            # Handle both dict and list inputs safely
             storyline = input_data.get("storyline", {})
+            if isinstance(storyline, list):
+                storyline = storyline[0] if len(storyline) > 0 else {}
+            # Ensure storyline is a dict
+            if not isinstance(storyline, dict):
+                storyline = {}
+            
             insights = input_data.get("insights", {})
+            if isinstance(insights, list):
+                insights = insights[0] if len(insights) > 0 else {}
+            # Ensure insights is a dict
+            if not isinstance(insights, dict):
+                insights = {}
             
             if not storyline:
                 raise ValueError("No storyline provided")
@@ -97,7 +109,10 @@ class SlidePlanningAgent(GeminiAgent):
         
         # Add storyline overview
         slide_count = storyline.get("slide_count", 0)
-        main_message = storyline.get("storyline_metadata", {}).get("main_message", "")
+        storyline_metadata = storyline.get("storyline_metadata", {})
+        if isinstance(storyline_metadata, list):
+            storyline_metadata = storyline_metadata[0] if len(storyline_metadata) > 0 else {}
+        main_message = storyline_metadata.get("main_message", "")
         
         context_parts.append(f"Presentation Overview:")
         context_parts.append(f"- Total Slides: {slide_count}")
@@ -105,8 +120,8 @@ class SlidePlanningAgent(GeminiAgent):
             context_parts.append(f"- Main Message: {main_message}")
         
         # Add presentation type and audience
-        presentation_type = storyline.get("storyline_metadata", {}).get("presentation_type", "")
-        target_audience = storyline.get("storyline_metadata", {}).get("target_audience", "")
+        presentation_type = storyline_metadata.get("presentation_type", "")
+        target_audience = storyline_metadata.get("target_audience", "")
         
         if presentation_type:
             context_parts.append(f"- Presentation Type: {presentation_type}")
@@ -125,34 +140,49 @@ class SlidePlanningAgent(GeminiAgent):
         if structure:
             context_parts.append(f"\\nSlide Structure:")
             for slide_info in structure:
-                slide_num = slide_info.get("slide_number", 0)
-                title = slide_info.get("title", "")
-                narrative_purpose = slide_info.get("narrative_purpose", "")
-                slide_type = slide_info.get("slide_type", "")
-                context_parts.append(f"Slide {slide_num}: {title}")
-                context_parts.append(f"  Type: {slide_type}")
-                context_parts.append(f"  Purpose: {narrative_purpose}")
+                if isinstance(slide_info, dict):
+                    slide_num = slide_info.get("slide_number", 0)
+                    title = slide_info.get("title", "")
+                    narrative_purpose = slide_info.get("narrative_purpose", "")
+                    slide_type = slide_info.get("slide_type", "")
+                    context_parts.append(f"Slide {slide_num}: {title}")
+                    context_parts.append(f"  Type: {slide_type}")
+                    context_parts.append(f"  Purpose: {narrative_purpose}")
+                else:
+                    # Handle non-dict slide_info
+                    context_parts.append(f"Slide: {str(slide_info)}")
         
         # Add key insights
         insights_list = insights.get("insights", [])
         if insights_list:
             context_parts.append(f"\\nKey Insights to Include:")
             for insight in insights_list[:5]:  # Limit to top 5 insights
-                insight_text = insight.get("text", "")
-                importance = insight.get("importance", 0)
-                context_parts.append(f"- {insight_text} (importance: {importance})")
+                if isinstance(insight, dict):
+                    insight_text = insight.get("text", "")
+                    importance = insight.get("importance", 0)
+                    context_parts.append(f"- {insight_text} (importance: {importance})")
+                else:
+                    # Handle non-dict insight
+                    context_parts.append(f"- {str(insight)}")
         
         # Add metrics for potential charts
         metrics = insights.get("metrics", [])
         if metrics:
             context_parts.append(f"\\nAvailable Metrics for Charts:")
             for metric in metrics[:5]:  # Limit to top 5 metrics
-                metric_name = metric.get("name", "")
-                metric_value = metric.get("value", "")
-                context_parts.append(f"- {metric_name}: {metric_value}")
+                if isinstance(metric, dict):
+                    metric_name = metric.get("name", "")
+                    metric_value = metric.get("value", "")
+                    context_parts.append(f"- {metric_name}: {metric_value}")
+                else:
+                    # Handle non-dict metric
+                    context_parts.append(f"- {str(metric)}")
         
         # Add recommendations
-        recommendations = insights.get("executive_summary", {}).get("recommendations", [])
+        executive_summary = insights.get("executive_summary", {})
+        if isinstance(executive_summary, list):
+            executive_summary = executive_summary[0] if len(executive_summary) > 0 else {}
+        recommendations = executive_summary.get("recommendations", [])
         if recommendations:
             context_parts.append(f"\\nKey Recommendations:")
             for rec in recommendations:

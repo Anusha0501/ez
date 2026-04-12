@@ -98,7 +98,7 @@ class StorylineAgent(GeminiAgent):
         except Exception as e:
             self.logger.error(f"Error in storyline agent: {str(e)}")
             # Return fallback result instead of crashing
-            fallback_result = self._create_fallback_storyline(parsed_data, insights)
+            fallback_result = self._create_fallback_storyline({"parsed_data": parsed_data, "insights": insights})
             self.log_reasoning("fallback", "Using fallback storyline due to agent failure", {
                 "error": str(e),
                 "fallback_applied": True
@@ -299,23 +299,7 @@ class StorylineAgent(GeminiAgent):
         except:
             pass
         
-        # Fallback distribution
-        def _create_fallback_storyline(self, parsed_data: Dict, insights: Dict) -> Dict[str, Any]:
-            """Create fallback storyline when Gemini fails."""
-            sections = parsed_data.get("sections", [])
-            elements = parsed_data.get("elements", [])
-            
-            # Create basic storyline structure
-            fallback_storyline = {
-                "introduction": 2,
-                "summary": 1,
-                "analysis": max(3, len(sections)),
-                "strategy": max(2, len(sections)),
-                "implementation": max(1, len(sections)),
-                "conclusion": 2
-            }
-            
-            return fallback_storyline
+        # Fallback distribution handled by main _create_fallback_storyline method
     
     def _create_detailed_structure(self, narrative_flow: List[str], content_distribution: Dict[str, int], content_context: str) -> List[Dict[str, Any]]:
         """Create detailed slide structure based on narrative flow and distribution."""
@@ -493,3 +477,23 @@ class StorylineAgent(GeminiAgent):
             return False
         
         return True
+    
+    def _create_fallback_storyline(self, data):
+        """Create fallback storyline when Gemini fails."""
+        if not isinstance(data, dict):
+            data = {}
+        
+        return [
+            {
+                "title": "Overview",
+                "content": data.get("summary", ["Auto-generated summary"])
+            },
+            {
+                "title": "Key Insights",
+                "content": data.get("key_points", [])[:5]
+            },
+            {
+                "title": "Conclusion",
+                "content": ["End of presentation"]
+            }
+        ]
