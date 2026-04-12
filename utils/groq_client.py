@@ -15,7 +15,7 @@ try:
 except Exception:  # pragma: no cover - streamlit optional in non-UI test env
     st = None
 
-GROQ_MODEL = "llama3-8b-8192"
+GROQ_MODEL = "llama-3.1-8b-instant"
 
 
 class GroqClient:
@@ -63,6 +63,7 @@ class GroqClient:
             response_text = (response.choices[0].message.content or "").strip()
             if not response_text or len(response_text.strip()) < 10:
                 raise Exception("Groq returned empty response")
+            self.logger.info("Groq response successful")
             return response_text
         except Exception as e:
             raise Exception(f"Groq error: {str(e)}")
