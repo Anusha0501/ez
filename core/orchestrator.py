@@ -33,15 +33,12 @@ class Orchestrator:
             )
             
             # Step 2: Extract Insights
-            insights_data = self._execute_agent_step(
-                "insight_agent",
-                {"parsed_data": parsed_data}
-            )
+            insights_data = self._execute_agent_step("insight_agent", parsed_data)
             
             # Step 3: Create Storyline
             storyline_data = self._execute_agent_step(
                 "storyline_agent",
-                {"parsed_data": parsed_data, "insights": insights_data}
+                {"parsed_data": parsed_data.get("parsed_data", {}), "insights": insights_data}
             )
             
             # Step 4: Plan Slides

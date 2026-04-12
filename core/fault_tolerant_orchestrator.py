@@ -3,7 +3,7 @@ Fault-tolerant orchestrator for robust multi-agent execution.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 from .orchestrator import Orchestrator
 from utils.safe_executor import (
@@ -90,7 +90,7 @@ class FaultTolerantOrchestrator(Orchestrator):
     def _execute_storyline_with_fallback(self, parsed_data: Dict[str, Any], insights_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute storyline agent with fallback logic."""
         def fallback_storyline(data: Dict[str, Any]) -> Dict[str, Any]:
-            body = FaultTolerantOrchestrator._document_body(data.get("parsed_data", {}))
+            body = data.get("parsed_data", {})
             n_sections = len(body.get("sections", []))
             return {
                 "introduction": 2,
@@ -115,7 +115,7 @@ class FaultTolerantOrchestrator(Orchestrator):
         return safe_execute(
             "Storyline Agent",
             self.agents["storyline_agent"].process,
-            {"parsed_data": parsed_data, "insights": insights_data},
+            {"parsed_data": self._document_body(parsed_data), "insights": insights_data},
             fallback_storyline,
             self.execution_logs
         )
@@ -123,7 +123,7 @@ class FaultTolerantOrchestrator(Orchestrator):
     def _execute_slide_planning_with_fallback(self, parsed_data: Dict[str, Any], insights_data: Dict[str, Any], storyline_data: Dict[str, Any]) -> Dict[str, Any]:
         """Execute slide planning agent with fallback logic."""
         def fallback_slide_plans(data: Dict[str, Any]) -> Dict[str, Any]:
-            body = FaultTolerantOrchestrator._document_body(data.get("parsed_data", {}))
+            body = data.get("parsed_data", {})
             sections = body.get("sections", [])
             slide_plans = []
             for i, section in enumerate(sections[:10]):
@@ -149,7 +149,7 @@ class FaultTolerantOrchestrator(Orchestrator):
         return safe_execute(
             "Slide Planning Agent",
             self.agents["slide_planning_agent"].process,
-            {"parsed_data": parsed_data, "insights": insights_data, "storyline": storyline_data},
+            {"parsed_data": self._document_body(parsed_data), "insights": insights_data, "storyline": storyline_data},
             fallback_slide_plans,
             self.execution_logs
         )

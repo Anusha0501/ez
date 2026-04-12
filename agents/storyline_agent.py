@@ -63,7 +63,7 @@ class StorylineAgent(GeminiAgent):
             
             # Define content distribution
             self.log_reasoning("distribute_content", "Distributing content across slides")
-            content_distribution = self._determine_content(slide_count, content_context)
+            content_distribution = self._distribute_content(slide_count, content_context)
             
             # Create detailed structure
             self.log_reasoning("create_structure", "Creating detailed slide structure")
@@ -466,7 +466,9 @@ class StorylineAgent(GeminiAgent):
         
         # Validate slide count
         slide_count = output.get("slide_count", 0)
-        if not isinstance(slide_count, int) or slide_count < 10 or slide_count > 15:
+        fallback_used = output.get("storyline_metadata", {}).get("fallback_used", False)
+        min_slides = 4 if fallback_used else 10
+        if not isinstance(slide_count, int) or slide_count < min_slides or slide_count > 15:
             self.logger.error(f"Invalid slide count: {slide_count}")
             return False
         
@@ -480,20 +482,37 @@ class StorylineAgent(GeminiAgent):
     
     def _create_fallback_storyline(self, data):
         """Create fallback storyline when Gemini fails."""
+        self.logger.warning("Gemini failed → using fallback")
         if not isinstance(data, dict):
             data = {}
-        
-        return [
-            {
-                "title": "Overview",
-                "content": data.get("summary", ["Auto-generated summary"])
-            },
-            {
-                "title": "Key Insights",
-                "content": data.get("key_points", [])[:5]
-            },
-            {
-                "title": "Conclusion",
-                "content": ["End of presentation"]
-            }
+        fallback_slides = [
+            {"title": "Overview", "content": ["Summary of document"]},
+            {"title": "Key Insights", "content": ["Insight 1", "Insight 2"]},
+            {"title": "Analysis", "content": ["Analysis point"]},
+            {"title": "Conclusion", "content": ["Final takeaway"]},
         ]
+
+        return {
+            "narrative_flow": [s["title"] for s in fallback_slides],
+            "slide_count": len(fallback_slides),
+            "content_distribution": {
+                "introduction": 1,
+                "summary": 1,
+                "analysis": 1,
+                "strategy": 0,
+                "implementation": 0,
+                "conclusion": 1
+            },
+            "key_themes": [s["title"] for s in fallback_slides],
+            "structure": [
+                {
+                    "slide_number": i + 1,
+                    "title": s["title"],
+                    "narrative_purpose": s["content"][0],
+                    "slide_type": "content"
+                }
+                for i, s in enumerate(fallback_slides)
+            ],
+            "fallback_slides": fallback_slides,
+            "storyline_metadata": {"fallback_used": True}
+        }
