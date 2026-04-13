@@ -183,26 +183,29 @@ Markdown:
             if not slide["content"] or len(slide["content"]) == 0:
                 slide["content"] = ["Key insight", "Supporting detail"]
 
-        slides = normalized_slides
-        expanded = []
-        for slide in slides:
-            bullets = slide["content"]
-            for i in range(0, len(bullets), 2):
-                expanded.append({
-                    "title": slide["title"],
-                    "content": bullets[i:i + 2],
-                })
+        final_slides = normalized_slides
+        if len(final_slides) < 10:
+            expanded = []
+            for slide in final_slides:
+                bullets = slide["content"]
+                for i in range(0, len(bullets), 2):
+                    expanded.append({
+                        "title": slide["title"],
+                        "content": bullets[i:i + 2],
+                    })
 
-        seed_slides = expanded[:]
-        while len(expanded) < 10:
-            if not expanded:
-                break
-            source = seed_slides[len(expanded) % len(seed_slides)]
-            expanded.append({
-                "title": f"{source['title']} (Continued)",
-                "content": source["content"],
-            })
-        final_slides = expanded[:12]
+            seed_slides = expanded[:]
+            while len(expanded) < 10:
+                if not expanded:
+                    break
+                source = seed_slides[len(expanded) % len(seed_slides)]
+                expanded.append({
+                    "title": f"{source['title']} (Continued)",
+                    "content": source["content"],
+                })
+            final_slides = expanded
+
+        final_slides = final_slides[:12]
 
         print("Final slides:", final_slides[:2])
         if not final_slides:
