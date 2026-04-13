@@ -121,13 +121,14 @@ class PPTXGeneratorAgent(BaseAgent):
                     "title": "Overview",
                     "content": ["Auto-generated presentation"]
                 }]
+            for slide in slides:
+                assert len(slide["content"]) > 0
+            seed_slides = slides[:]
             while len(slides) < 10:
+                source = seed_slides[len(slides) % len(seed_slides)]
                 slides.append({
-                    "title": "Key Insights",
-                    "content": [
-                        "Important takeaway from the document",
-                        "Supporting insight derived from analysis"
-                    ]
+                    "title": f"{source['title']} (Continued)",
+                    "content": source["content"],
                 })
             final_slides = slides[:12]
             assert 10 <= len(final_slides) <= 15, "Slide count must be between 10 and 15"

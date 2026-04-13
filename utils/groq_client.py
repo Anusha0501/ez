@@ -166,19 +166,21 @@ Markdown:
         if not data or "slides" not in data:
             raise Exception("Invalid LLM response")
         slides = data.get("slides", [])
+        print("LLM raw content:", slides[:2])
 
         normalized_slides = []
         for slide in slides:
             slide = slide if isinstance(slide, dict) else {}
+            content = slide.get("content") or slide.get("bullets")
+            if isinstance(content, str):
+                content = [content]
             normalized_slides.append({
                 "title": slide.get("title", "Untitled Slide"),
-                "content": slide.get("bullets", []) or slide.get("content", []),
+                "content": content or [],
             })
 
         for slide in normalized_slides:
-            if isinstance(slide["content"], str):
-                slide["content"] = [slide["content"]]
-            if not slide["content"]:
+            if not slide["content"] or len(slide["content"]) == 0:
                 slide["content"] = ["Key insight", "Supporting detail"]
 
         slides = normalized_slides
@@ -191,14 +193,15 @@ Markdown:
                     "content": bullets[i:i + 2],
                 })
 
+        seed_slides = expanded[:]
         while len(expanded) < 10:
+            if not expanded:
+                break
+            source = seed_slides[len(expanded) % len(seed_slides)]
             expanded.append({
-                    "title": "Key Insights",
-                    "content": [
-                        "Important takeaway from the document",
-                        "Supporting insight derived from analysis",
-                    ],
-                })
+                "title": f"{source['title']} (Continued)",
+                "content": source["content"],
+            })
         final_slides = expanded[:12]
 
         print("Final slides:", final_slides[:2])
