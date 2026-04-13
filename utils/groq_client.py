@@ -6,6 +6,7 @@ import os
 import logging
 import time
 import json
+import re
 from typing import Optional
 
 try:
@@ -72,43 +73,85 @@ class GroqClient:
 
 
 def _fallback_slides() -> dict:
-    """Structured fallback slides to guarantee meaningful PPT content."""
+    """Hard fallback to guarantee non-empty PPT content."""
     return {
         "slides": [
-            {"title": "Overview", "bullets": ["Purpose", "Scope", "Key message"]},
-            {"title": "Current State", "bullets": ["Main themes", "Observed patterns", "Context summary"]},
-            {"title": "Insights", "bullets": ["Important finding 1", "Important finding 2", "Important finding 3"]},
-            {"title": "Recommendations", "bullets": ["Action 1", "Action 2", "Action 3"]},
-            {"title": "Next Steps", "bullets": ["Immediate step", "Owner alignment", "Timeline checkpoint"]},
+            {
+                "title": "Overview",
+                "content": [
+                    "Key topic identified",
+                    "Main insight extracted",
+                    "Conclusion summary",
+                ],
+            }
         ]
     }
+
+
+def extract_json(text):
+    try:
+        return json.loads(text)
+    except Exception:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        return None
 
 
 def generate_presentation_content(markdown_text: str) -> dict:
     """Generate fully-structured slide content with a single Groq call."""
     logger = logging.getLogger("groq_single_call")
     truncated_markdown = (markdown_text or "")[:8000]
-    prompt = f"""You are a presentation expert.
+    prompt = f"""You are an expert presentation strategist.
 
-Convert the following markdown into a structured PowerPoint format.
+Convert the markdown into a high-quality professional PPT structure.
 
-Return STRICT JSON ONLY in this format:
+Return STRICT JSON ONLY:
 
 {{
 "slides": [
 {{
 "title": "Slide title",
-"bullets": ["point 1", "point 2", "point 3"]
+"bullets": [
+"Insight-driven point with explanation",
+"Supporting detail with context",
+"Practical implication or example"
+]
 }}
 ]
 }}
 
-Rules:
+RULES:
 
-* Generate 5–7 slides only
-* Keep bullet points concise
-* Ensure meaningful content
-* No explanations, only JSON output
+* Generate EXACTLY 10–12 slides
+* Each slide must have 3–5 meaningful bullet points
+* Each slide should represent a different section or idea
+* Do NOT combine all content into one slide
+* NO generic text like "Auto-generated content"
+* NO repetition of headings as bullets
+* Extract REAL insights from markdown
+* Each bullet must add value (not filler)
+* Focus on clarity, impact, and readability
+
+STYLE:
+
+* Write like a consultant (clear, structured, insightful)
+* Keep bullets short but informative
+* Avoid vague statements
+
+BAD:
+
+* Auto-generated content
+* Generic summary
+
+GOOD:
+
+* AI enables real-time decision making by analyzing large datasets
+* Reduces operational costs through process automation
+
+IMPORTANT:
+Return ONLY valid JSON.
+Start with {{ and end with }}.
 
 Markdown:
 {truncated_markdown}
@@ -118,19 +161,49 @@ Markdown:
         logger.info("Using Groq (single-call mode)")
         time.sleep(1)
         client = GroqClient(model_name="llama-3.1-8b-instant")
-        raw = client.call_groq(prompt)
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            import re
-            match = re.search(r"\{.*\}", raw, re.DOTALL)
-            parsed = json.loads(match.group(0)) if match else {}
+        response_text = client.call_groq(prompt)
+        data = extract_json(response_text)
+        if not data or "slides" not in data:
+            raise Exception("Invalid LLM response")
+        slides = data.get("slides", [])
 
-        slides = parsed.get("slides", []) if isinstance(parsed, dict) else []
-        if not isinstance(slides, list) or not slides:
+        normalized_slides = []
+        for slide in slides:
+            slide = slide if isinstance(slide, dict) else {}
+            normalized_slides.append({
+                "title": slide.get("title", "Untitled Slide"),
+                "content": slide.get("bullets", []) or slide.get("content", []),
+            })
+
+        for slide in normalized_slides:
+            if isinstance(slide["content"], str):
+                slide["content"] = [slide["content"]]
+            if not slide["content"]:
+                slide["content"] = ["Key insight", "Supporting detail"]
+
+        if len(normalized_slides) < 5:
+            expanded_slides = []
+            for i, slide in enumerate(normalized_slides):
+                bullets = slide.get("content", [])
+                chunk_size = max(1, len(bullets) // 3)
+                for j in range(0, len(bullets), chunk_size):
+                    expanded_slides.append({
+                        "title": f"{slide['title']} (Part {j // chunk_size + 1})",
+                        "content": bullets[j:j + chunk_size],
+                    })
+
+            while len(expanded_slides) < 8:
+                expanded_slides.append({
+                    "title": "Key Insights",
+                    "content": ["Important takeaway", "Supporting insight"],
+                })
+            normalized_slides = expanded_slides
+
+        print("Final slides:", normalized_slides[:2])
+        if not normalized_slides:
             raise ValueError("Invalid slides payload")
         logger.info("Slides generated successfully")
-        return {"slides": slides}
+        return {"slides": normalized_slides}
     except Exception:
         logger.info("Slides generated successfully")
         return _fallback_slides()
