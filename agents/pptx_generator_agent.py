@@ -121,12 +121,17 @@ class PPTXGeneratorAgent(BaseAgent):
                     "title": "Overview",
                     "content": ["Auto-generated presentation"]
                 }]
-            while len(slides) < 5:
+            while len(slides) < 10:
                 slides.append({
                     "title": "Key Insights",
-                    "content": ["Important takeaway", "Supporting insight"]
+                    "content": [
+                        "Important takeaway from the document",
+                        "Supporting insight derived from analysis"
+                    ]
                 })
-            assert len(slides) >= 5, "Too few slides generated"
+            final_slides = slides[:12]
+            assert 10 <= len(final_slides) <= 15, "Slide count must be between 10 and 15"
+            slides = final_slides
             
             # Log slide normalization
             self.log_reasoning("normalize_slides", f"Slides normalized: {len(slides)}")

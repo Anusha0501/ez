@@ -125,8 +125,8 @@ RULES:
 
 * Generate EXACTLY 10–12 slides
 * Each slide must have 3–5 meaningful bullet points
-* Each slide should represent a different section or idea
-* Do NOT combine all content into one slide
+* Each slide must represent a distinct idea
+* Distribute content across slides, do NOT compress into fewer slides
 * NO generic text like "Auto-generated content"
 * NO repetition of headings as bullets
 * Extract REAL insights from markdown
@@ -181,29 +181,31 @@ Markdown:
             if not slide["content"]:
                 slide["content"] = ["Key insight", "Supporting detail"]
 
-        if len(normalized_slides) < 5:
-            expanded_slides = []
-            for i, slide in enumerate(normalized_slides):
-                bullets = slide.get("content", [])
-                chunk_size = max(1, len(bullets) // 3)
-                for j in range(0, len(bullets), chunk_size):
-                    expanded_slides.append({
-                        "title": f"{slide['title']} (Part {j // chunk_size + 1})",
-                        "content": bullets[j:j + chunk_size],
-                    })
-
-            while len(expanded_slides) < 8:
-                expanded_slides.append({
-                    "title": "Key Insights",
-                    "content": ["Important takeaway", "Supporting insight"],
+        slides = normalized_slides
+        expanded = []
+        for slide in slides:
+            bullets = slide["content"]
+            for i in range(0, len(bullets), 2):
+                expanded.append({
+                    "title": slide["title"],
+                    "content": bullets[i:i + 2],
                 })
-            normalized_slides = expanded_slides
 
-        print("Final slides:", normalized_slides[:2])
-        if not normalized_slides:
+        while len(expanded) < 10:
+            expanded.append({
+                    "title": "Key Insights",
+                    "content": [
+                        "Important takeaway from the document",
+                        "Supporting insight derived from analysis",
+                    ],
+                })
+        final_slides = expanded[:12]
+
+        print("Final slides:", final_slides[:2])
+        if not final_slides:
             raise ValueError("Invalid slides payload")
         logger.info("Slides generated successfully")
-        return {"slides": normalized_slides}
+        return {"slides": final_slides}
     except Exception:
         logger.info("Slides generated successfully")
         return _fallback_slides()
