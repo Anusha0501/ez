@@ -52,6 +52,9 @@ class PPTXGeneratorAgent(BaseAgent):
             "body": 18,
             "small": 14
         }
+        self.LEFT_MARGIN = Inches(0.7)
+        self.RIGHT_MARGIN = Inches(0.7)
+        self.TOP_MARGIN = Inches(0.6)
     
     def normalize_slides(self, slides):
         """Normalize slide data structure to ensure consistent format."""
@@ -432,14 +435,15 @@ class PPTXGeneratorAgent(BaseAgent):
         ppt_slide = prs.slides.add_slide(slide_layout_info)
 
         if slide_number == 1:
-            self._render_title_slide(ppt_slide, title, content)
+            self._render_title_slide(ppt_slide, title, content, prs.slide_width)
             return ppt_slide
         if self._is_section_break_slide(title):
             self._render_section_break_slide(ppt_slide, title, slide_number)
             return ppt_slide
 
         # Section label
-        section_box = ppt_slide.shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(0.8), Inches(0.3))
+        section_box = ppt_slide.shapes.add_textbox(self.LEFT_MARGIN, self.TOP_MARGIN - Inches(0.2), Inches(0.8), Inches(0.3))
+        section_box.text_frame.word_wrap = True
         section_para = section_box.text_frame.paragraphs[0]
         section_para.text = f"{slide_number:02d}"
         section_para.font.name = self.fonts["body"]
@@ -447,7 +451,10 @@ class PPTXGeneratorAgent(BaseAgent):
         section_para.font.color.rgb = RGBColor(136, 136, 136)
 
         # Title + subtitle hierarchy
-        title_box = ppt_slide.shapes.add_textbox(Inches(1.1), Inches(0.35), Inches(11.5), Inches(0.6))
+        title_top = self.TOP_MARGIN
+        title_height = Inches(0.6)
+        title_box = ppt_slide.shapes.add_textbox(self.LEFT_MARGIN, title_top, prs.slide_width - self.LEFT_MARGIN - self.RIGHT_MARGIN, title_height)
+        title_box.text_frame.word_wrap = True
         title_para = title_box.text_frame.paragraphs[0]
         title_para.text = title
         title_para.font.name = self.fonts["heading"]
@@ -455,8 +462,11 @@ class PPTXGeneratorAgent(BaseAgent):
         title_para.font.bold = True
         title_para.font.color.rgb = self.theme_colors["primary"]
 
+        subtitle_top = title_top + title_height + Inches(0.2)
+        subtitle_height = Inches(0.5)
         subtitle_text = self._clean_bullet(content[0]) if content else "Summary"
-        subtitle_box = ppt_slide.shapes.add_textbox(Inches(1.1), Inches(0.95), Inches(11.0), Inches(0.5))
+        subtitle_box = ppt_slide.shapes.add_textbox(self.LEFT_MARGIN, subtitle_top, prs.slide_width - self.LEFT_MARGIN - self.RIGHT_MARGIN, subtitle_height)
+        subtitle_box.text_frame.word_wrap = True
         subtitle_para = subtitle_box.text_frame.paragraphs[0]
         subtitle_para.text = subtitle_text
         subtitle_para.font.name = self.fonts["subtitle"]
@@ -464,7 +474,14 @@ class PPTXGeneratorAgent(BaseAgent):
         subtitle_para.font.color.rgb = self.theme_colors["dark"]
 
         # Divider line
-        divider = ppt_slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.5), Inches(1.45), Inches(12.2), Inches(0.03))
+        divider_top = subtitle_top + subtitle_height + Inches(0.2)
+        divider = ppt_slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            self.LEFT_MARGIN,
+            divider_top,
+            prs.slide_width - self.LEFT_MARGIN - self.RIGHT_MARGIN,
+            Inches(0.03),
+        )
         divider.fill.solid()
         divider.fill.fore_color.rgb = RGBColor(220, 220, 220)
         divider.line.fill.background()
@@ -477,7 +494,13 @@ class PPTXGeneratorAgent(BaseAgent):
             left_bullets = cleaned_bullets[:4]
 
         # Two-column layout
-        left_box = ppt_slide.shapes.add_textbox(Inches(0.7), Inches(1.8), Inches(7.5), Inches(4.9))
+        content_top = divider_top + Inches(0.3)
+        left_box = ppt_slide.shapes.add_textbox(
+            self.LEFT_MARGIN,
+            content_top,
+            int(prs.slide_width * 0.55),
+            Inches(4),
+        )
         left_tf = left_box.text_frame
         left_tf.clear()
         left_tf.word_wrap = True
@@ -485,17 +508,24 @@ class PPTXGeneratorAgent(BaseAgent):
             para = left_tf.paragraphs[0] if idx == 0 else left_tf.add_paragraph()
             para.text = bullet
             para.level = 0
-            para.space_after = Pt(10)
+            para.space_after = Pt(6)
             para.font.name = self.fonts["body"]
             para.font.size = Pt(20)
             para.font.color.rgb = self.theme_colors["dark"]
 
-        right_shape = ppt_slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(8.5), Inches(1.9), Inches(3.8), Inches(4.6))
+        right_shape = ppt_slide.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            int(prs.slide_width * 0.65),
+            content_top,
+            int(prs.slide_width * 0.28),
+            Inches(2.5),
+        )
         right_shape.fill.solid()
         right_shape.fill.fore_color.rgb = RGBColor(240, 246, 255)
         right_shape.line.color.rgb = self.theme_colors["accent"]
         right_tf = right_shape.text_frame
         right_tf.clear()
+        right_tf.word_wrap = True
         right_header = right_tf.paragraphs[0]
         right_header.text = "Key Highlights"
         right_header.font.bold = True
@@ -511,7 +541,8 @@ class PPTXGeneratorAgent(BaseAgent):
             p.font.color.rgb = self.theme_colors["dark"]
 
         # Footer
-        footer = ppt_slide.shapes.add_textbox(Inches(0.5), Inches(6.9), Inches(6.0), Inches(0.3))
+        footer = ppt_slide.shapes.add_textbox(self.LEFT_MARGIN, prs.slide_height - Inches(0.5), Inches(6.0), Inches(0.3))
+        footer.text_frame.word_wrap = True
         footer_para = footer.text_frame.paragraphs[0]
         footer_para.text = "Generated by AI Presentation System"
         footer_para.font.size = Pt(10)
@@ -535,8 +566,10 @@ class PPTXGeneratorAgent(BaseAgent):
     def _is_section_break_slide(self, title: str) -> bool:
         return title.strip().lower() in {"revenue analysis", "market expansion", "customer metrics"}
 
-    def _render_title_slide(self, slide: Any, title: str, content: List[str]):
+    def _render_title_slide(self, slide: Any, title: str, content: List[str], slide_width: int):
         title_box = slide.shapes.add_textbox(Inches(1.0), Inches(2.0), Inches(11.3), Inches(1.5))
+        title_box.left = int((slide_width - title_box.width) / 2)
+        title_box.text_frame.word_wrap = True
         title_para = title_box.text_frame.paragraphs[0]
         title_para.text = title
         title_para.alignment = PP_ALIGN.CENTER
@@ -547,6 +580,8 @@ class PPTXGeneratorAgent(BaseAgent):
 
         subtitle = self._clean_bullet(content[0]) if content else "Project Update"
         subtitle_box = slide.shapes.add_textbox(Inches(1.0), Inches(3.7), Inches(11.3), Inches(0.8))
+        subtitle_box.left = int((slide_width - subtitle_box.width) / 2)
+        subtitle_box.text_frame.word_wrap = True
         subtitle_para = subtitle_box.text_frame.paragraphs[0]
         subtitle_para.text = subtitle
         subtitle_para.alignment = PP_ALIGN.CENTER
@@ -555,6 +590,7 @@ class PPTXGeneratorAgent(BaseAgent):
 
     def _render_section_break_slide(self, slide: Any, title: str, slide_number: int):
         section_no = slide.shapes.add_textbox(Inches(5.6), Inches(2.2), Inches(1.5), Inches(0.6))
+        section_no.text_frame.word_wrap = True
         n_para = section_no.text_frame.paragraphs[0]
         n_para.text = f"{slide_number:02d}"
         n_para.alignment = PP_ALIGN.CENTER
@@ -562,6 +598,7 @@ class PPTXGeneratorAgent(BaseAgent):
         n_para.font.color.rgb = RGBColor(136, 136, 136)
 
         title_box = slide.shapes.add_textbox(Inches(1.5), Inches(2.9), Inches(9.5), Inches(1.2))
+        title_box.text_frame.word_wrap = True
         t_para = title_box.text_frame.paragraphs[0]
         t_para.text = title
         t_para.alignment = PP_ALIGN.CENTER
