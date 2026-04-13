@@ -102,27 +102,54 @@ def generate_presentation_content(markdown_text: str) -> dict:
     """Generate fully-structured slide content with a single Groq call."""
     logger = logging.getLogger("groq_single_call")
     truncated_markdown = (markdown_text or "")[:8000]
-    prompt = f"""You are a presentation expert.
+    prompt = f"""You are an expert presentation strategist.
 
-Convert the following markdown into a structured PowerPoint format.
+Convert the markdown into a high-quality professional PPT structure.
 
-Return STRICT JSON ONLY in this format:
+Return STRICT JSON ONLY:
 
 {{
 "slides": [
 {{
 "title": "Slide title",
-"bullets": ["point 1", "point 2", "point 3"]
+"bullets": [
+"Insight-driven point with explanation",
+"Supporting detail with context",
+"Practical implication or example"
+]
 }}
 ]
 }}
 
-Rules:
+RULES:
 
-* Generate 5–7 slides only
-* Keep bullet points concise
-* Ensure meaningful content
-* Return ONLY valid JSON. Do NOT include explanations, text, or markdown. Output must start with {{ and end with }}.
+* Generate 10–12 slides
+* Each slide must have 3–5 meaningful bullet points
+* NO generic text like "Auto-generated content"
+* NO repetition of headings as bullets
+* Extract REAL insights from markdown
+* Each bullet must add value (not filler)
+* Focus on clarity, impact, and readability
+
+STYLE:
+
+* Write like a consultant (clear, structured, insightful)
+* Keep bullets short but informative
+* Avoid vague statements
+
+BAD:
+
+* Auto-generated content
+* Generic summary
+
+GOOD:
+
+* AI enables real-time decision making by analyzing large datasets
+* Reduces operational costs through process automation
+
+IMPORTANT:
+Return ONLY valid JSON.
+Start with {{ and end with }}.
 
 Markdown:
 {truncated_markdown}
