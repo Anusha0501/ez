@@ -213,7 +213,14 @@ class FaultTolerantOrchestrator(Orchestrator):
 
         try:
             raw_slides = slide_plans_data.get("slides", []) if isinstance(slide_plans_data, dict) else []
-            layout_slides = [{"title": s.get("title", "Slide"), "bullets": s.get("bullets", [])} for s in raw_slides if isinstance(s, dict)]
+            layout_slides = [
+                {
+                    "title": s.get("title", "Slide"),
+                    "content": s.get("content", []) or s.get("bullets", []),
+                }
+                for s in raw_slides
+                if isinstance(s, dict)
+            ]
             if not layout_slides:
                 return self._write_emergency_pptx(input_data)
 
