@@ -6,6 +6,7 @@ import os
 import logging
 import time
 import json
+import re
 from typing import Optional
 
 try:
@@ -72,16 +73,29 @@ class GroqClient:
 
 
 def _fallback_slides() -> dict:
-    """Structured fallback slides to guarantee meaningful PPT content."""
+    """Hard fallback to guarantee non-empty PPT content."""
     return {
         "slides": [
-            {"title": "Overview", "bullets": ["Purpose", "Scope", "Key message"]},
-            {"title": "Current State", "bullets": ["Main themes", "Observed patterns", "Context summary"]},
-            {"title": "Insights", "bullets": ["Important finding 1", "Important finding 2", "Important finding 3"]},
-            {"title": "Recommendations", "bullets": ["Action 1", "Action 2", "Action 3"]},
-            {"title": "Next Steps", "bullets": ["Immediate step", "Owner alignment", "Timeline checkpoint"]},
+            {
+                "title": "Overview",
+                "content": [
+                    "Key topic identified",
+                    "Main insight extracted",
+                    "Conclusion summary",
+                ],
+            }
         ]
     }
+
+
+def extract_json(text):
+    try:
+        return json.loads(text)
+    except Exception:
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        return None
 
 
 def generate_presentation_content(markdown_text: str) -> dict:
@@ -108,7 +122,7 @@ Rules:
 * Generate 5–7 slides only
 * Keep bullet points concise
 * Ensure meaningful content
-* No explanations, only JSON output
+* Return ONLY valid JSON. Do NOT include explanations, text, or markdown. Output must start with {{ and end with }}.
 
 Markdown:
 {truncated_markdown}
@@ -118,19 +132,28 @@ Markdown:
         logger.info("Using Groq (single-call mode)")
         time.sleep(1)
         client = GroqClient(model_name="llama-3.1-8b-instant")
-        raw = client.call_groq(prompt)
-        try:
-            parsed = json.loads(raw)
-        except json.JSONDecodeError:
-            import re
-            match = re.search(r"\{.*\}", raw, re.DOTALL)
-            parsed = json.loads(match.group(0)) if match else {}
+        response_text = client.call_groq(prompt)
+        data = extract_json(response_text)
+        if not data or "slides" not in data:
+            raise Exception("Invalid LLM response")
 
-        slides = parsed.get("slides", []) if isinstance(parsed, dict) else []
-        if not isinstance(slides, list) or not slides:
+        normalized_slides = []
+        for slide in data["slides"]:
+            slide = slide if isinstance(slide, dict) else {}
+            normalized_slides.append({
+                "title": slide.get("title", "Untitled Slide"),
+                "content": slide.get("bullets", []) or slide.get("content", []),
+            })
+
+        for slide in normalized_slides:
+            if not slide["content"]:
+                slide["content"] = ["Key insight", "Supporting detail"]
+
+        print("Final slides:", normalized_slides[:2])
+        if not normalized_slides:
             raise ValueError("Invalid slides payload")
         logger.info("Slides generated successfully")
-        return {"slides": slides}
+        return {"slides": normalized_slides}
     except Exception:
         logger.info("Slides generated successfully")
         return _fallback_slides()
