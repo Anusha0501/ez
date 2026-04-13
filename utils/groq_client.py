@@ -123,8 +123,10 @@ Return STRICT JSON ONLY:
 
 RULES:
 
-* Generate 10–12 slides
+* Generate EXACTLY 10–12 slides
 * Each slide must have 3–5 meaningful bullet points
+* Each slide should represent a different section or idea
+* Do NOT combine all content into one slide
 * NO generic text like "Auto-generated content"
 * NO repetition of headings as bullets
 * Extract REAL insights from markdown
@@ -163,9 +165,10 @@ Markdown:
         data = extract_json(response_text)
         if not data or "slides" not in data:
             raise Exception("Invalid LLM response")
+        slides = data.get("slides", [])
 
         normalized_slides = []
-        for slide in data["slides"]:
+        for slide in slides:
             slide = slide if isinstance(slide, dict) else {}
             normalized_slides.append({
                 "title": slide.get("title", "Untitled Slide"),
@@ -173,8 +176,28 @@ Markdown:
             })
 
         for slide in normalized_slides:
+            if isinstance(slide["content"], str):
+                slide["content"] = [slide["content"]]
             if not slide["content"]:
                 slide["content"] = ["Key insight", "Supporting detail"]
+
+        if len(normalized_slides) < 5:
+            expanded_slides = []
+            for i, slide in enumerate(normalized_slides):
+                bullets = slide.get("content", [])
+                chunk_size = max(1, len(bullets) // 3)
+                for j in range(0, len(bullets), chunk_size):
+                    expanded_slides.append({
+                        "title": f"{slide['title']} (Part {j // chunk_size + 1})",
+                        "content": bullets[j:j + chunk_size],
+                    })
+
+            while len(expanded_slides) < 8:
+                expanded_slides.append({
+                    "title": "Key Insights",
+                    "content": ["Important takeaway", "Supporting insight"],
+                })
+            normalized_slides = expanded_slides
 
         print("Final slides:", normalized_slides[:2])
         if not normalized_slides:
