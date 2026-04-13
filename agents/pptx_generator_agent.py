@@ -112,6 +112,8 @@ class PPTXGeneratorAgent(BaseAgent):
             
             # Normalize slides to ensure consistent structure
             slides = self.normalize_slides(slide_layouts)
+            assert isinstance(slides, list)
+            assert all("title" in s and "content" in s for s in slides)
             
             # Fallback for empty slides
             if not slides:
