@@ -1,15 +1,16 @@
 # 🧠 Multi-Agent AI System: Markdown to PowerPoint Converter
 
-A production-grade, multi-agent AI system that converts Markdown (.md) files into **high-quality, consulting-level PowerPoint (.pptx) presentations** using Google Gemini.
+A production-grade, multi-agent AI system that converts Markdown (.md) files into **high-quality, consulting-level PowerPoint (.pptx) presentations** using Google Gemini and Groq AI.
 
 ## 🎯 Core Features
 
 - **🤖 Multi-Agent Architecture**: 9 specialized agents working in orchestrated workflow
-- **🧠 Intelligent Reasoning**: Uses Google Gemini for insight extraction and decision-making
+- **🧠 Intelligent Reasoning**: Uses Google Gemini and Groq AI for insight extraction and decision-making
 - **📊 Smart Visualizations**: Automatic chart generation and visual element creation
 - **🎨 Professional Design**: Consulting-grade layouts with consistent theming
 - **🔄 Feedback Loops**: Self-correcting workflow with validation
 - **📋 Structured Output**: 10-15 slides with logical narrative flow
+- **🛡️ Fault Tolerance**: Robust error handling with fallback mechanisms
 
 ## 🏗️ System Architecture
 
@@ -18,7 +19,7 @@ A production-grade, multi-agent AI system that converts Markdown (.md) files int
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Parser Agent  │───▶│ Insight Agent    │───▶│Storyline Agent  │
-│ (Deterministic)  │    │   (Gemini)      │    │   (Gemini)      │
+│ (Deterministic)  │    │ (Gemini/Groq)   │    │ (Gemini/Groq)   │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
          │                       │                       │
          ▼                       ▼                       ▼
@@ -154,6 +155,8 @@ GEMINI_API_KEY=your_gemini_api_key_here
 GROQ_API_KEY=your_groq_api_key_here
 ```
 
+**Note**: The system supports both Google Gemini and Groq AI models. Configure at least one API key to enable AI-powered features.
+
 ### Custom Templates
 
 Create custom templates by modifying the `templates/` directory:
@@ -179,32 +182,35 @@ custom_template = {
 
 ```
 ez/
-├── agents/                 # Multi-agent implementations
-│   ├── parser_agent.py
-│   ├── insight_agent.py
-│   ├── storyline_agent.py
-│   ├── slide_planning_agent.py
-│   ├── slide_classifier_agent.py
-│   ├── visual_transformation_agent.py
-│   ├── chart_decision_agent.py
-│   ├── layout_engine.py
-│   └── pptx_generator_agent.py
-├── core/                   # Core framework
-│   ├── agent.py           # Base agent class
-│   ├── orchestrator.py    # Workflow orchestration
-│   └── models.py          # Data models
-├── utils/                  # Utility functions
-│   ├── gemini_client.py   # Gemini API client
-│   ├── markdown_parser.py # Markdown parsing
-│   └── pptx_utils.py     # PowerPoint generation
-├── templates/              # Slide templates
-│   ├── slide_master.py   # Template management
-│   └── template_manager.py
-├── examples/               # Example files
-├── logs/                  # Execution logs
-├── main.py               # CLI interface
-├── requirements.txt       # Dependencies
-└── README.md            # This file
+├── agents/                      # Multi-agent implementations
+│   ├── parser_agent.py         # Markdown to JSON conversion
+│   ├── insight_agent.py        # Insight extraction (Gemini/Groq)
+│   ├── storyline_agent.py      # Narrative structure (Gemini/Groq)
+│   ├── slide_planning_agent.py # Content planning (Gemini)
+│   ├── slide_classifier_agent.py # Slide type classification (Gemini)
+│   ├── visual_transformation_agent.py # Text to visual conversion (Gemini)
+│   ├── chart_decision_agent.py # Chart type decisions (Gemini+Logic)
+│   ├── layout_engine.py        # Layout enforcement (Deterministic)
+│   └── pptx_generator_agent.py # PowerPoint generation
+├── core/                        # Core framework
+│   ├── agent.py                # Base agent class
+│   ├── models.py               # Data models
+│   ├── orchestrator.py         # Workflow orchestration
+│   └── fault_tolerant_orchestrator.py # Fault-tolerant workflow
+├── utils/                       # Utility functions
+│   ├── gemini_client.py        # Google Gemini API client
+│   ├── groq_client.py          # Groq AI API client
+│   ├── markdown_parser.py      # Markdown parsing
+│   ├── pptx_utils.py          # PowerPoint generation utilities
+│   ├── safe_executor.py       # Safe execution with fallbacks
+│   └── output_paths.py        # Output path management
+├── examples/                    # Example files
+├── logs/                       # Execution logs
+├── main.py                    # CLI interface
+├── app.py                     # Streamlit web interface
+├── requirements.txt            # Dependencies
+├── .env.example               # Environment variables template
+└── README.md                  # This file
 ```
 
 ## 🧪 Testing & Examples
@@ -273,6 +279,15 @@ Error: Failed to initialize Gemini client
 - Ensure you have API credits available
 - Verify internet connection
 
+**Groq API Error**
+```bash
+Error: Failed to initialize Groq client
+```
+- Check your `GROQ_API_KEY` environment variable
+- Ensure you have API credits available
+- Verify internet connection
+- Check Groq service status
+
 **Empty Output**
 ```bash
 Error: Input file is empty
@@ -284,6 +299,14 @@ Error: Input file is empty
 - Ensure markdown has clear structure with headings
 - Include numeric data for charts
 - Use lists and tables for better visualization
+
+**Slide Content Missing**
+```bash
+Error: Slides contain no content
+```
+- Check agent logs for processing errors
+- Verify AI API keys are configured
+- Ensure markdown has sufficient content structure
 
 ### Debug Mode
 
@@ -394,9 +417,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **Google Gemini** - For AI reasoning capabilities
+- **Groq AI** - For fast AI inference and alternative model support
 - **python-pptx** - For PowerPoint generation
 - **Markdown** - For markdown parsing
 - **Matplotlib** - For chart generation
+- **Streamlit** - For web interface
 
 ## 📞 Support
 
@@ -411,9 +436,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Your system successfully demonstrates:
 
 ✅ **Multi-Agent Collaboration**: 9 agents working in orchestrated workflow  
+✅ **Dual AI Support**: Google Gemini and Groq AI for flexible inference  
 ✅ **Visual Intelligence**: Automatic conversion of text to visuals  
 ✅ **Professional Output**: Consulting-grade PowerPoint presentations  
 ✅ **Robust Architecture**: Error handling, validation, feedback loops  
+✅ **Fault Tolerance**: Safe execution with automatic fallbacks  
 ✅ **Extensible Design**: Easy to add new agents and templates  
 
 **Transform your markdown into stunning presentations with AI-powered intelligence! 🚀**
